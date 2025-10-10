@@ -22,14 +22,15 @@ email-validator==2.1.0
 # Logging and monitoring
 structlog==23.2.0
 
-# CORS
-python-cors==1.0.1
-
 # JSON handling
 orjson==3.9.10
 
 # Date/time
 python-dateutil==2.8.2
+
+# PDF processing
+pdfplumber==0.10.3
+PyMuPDF==1.23.21
 
 # Environment and config
 python-dotenv==1.0.0
