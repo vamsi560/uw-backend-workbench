@@ -69,13 +69,13 @@ app.add_middleware(
 # Dashboard router temporarily disabled for deployment
 # app.include_router(dashboard_router)
 
-# Include Guidewire integration router
-from guidewire_endpoints import router as guidewire_router
-app.include_router(guidewire_router)
+# Include Guidewire integration router - temporarily disabled for deployment
+# from guidewire_endpoints import router as guidewire_router
+# app.include_router(guidewire_router)
 
-# Include Guidewire dashboard API router  
-from guidewire_dashboard_api import router as guidewire_dashboard_router
-app.include_router(guidewire_dashboard_router)
+# Include Guidewire dashboard API router - temporarily disabled for deployment
+# from guidewire_dashboard_api import router as guidewire_dashboard_router
+# app.include_router(guidewire_dashboard_router)
 
 # --- End app creation ---
 
