@@ -12,6 +12,9 @@ sys.path.insert(0, str(current_dir))
 # Import the FastAPI app at module level for Azure/Gunicorn
 from main import app
 
+# Create ASGI application for Gunicorn with uvicorn workers
+application = app
+
 if __name__ == "__main__":
     import uvicorn
     
