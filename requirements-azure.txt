@@ -18,19 +18,20 @@ requests==2.31.0
 
 # Email and file processing
 email-validator==2.1.0
-python-email-validator==2.1.0
 
 # Logging and monitoring
 structlog==23.2.0
-
-# CORS
-fastapi-cors==0.0.6
 
 # JSON handling
 orjson==3.9.10
 
 # Date/time
 python-dateutil==2.8.2
+
+# Document processing (optional)
+python-docx==0.8.11
+openpyxl==3.1.2
+pandas==2.1.4
 
 # Environment and config
 python-dotenv==1.0.0
