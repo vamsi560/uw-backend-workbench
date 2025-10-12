@@ -9,8 +9,10 @@ from pathlib import Path
 current_dir = Path(__file__).parent
 sys.path.insert(0, str(current_dir))
 
+# Import the FastAPI app at module level for Azure/Gunicorn
+from main import app
+
 if __name__ == "__main__":
-    from main import app
     import uvicorn
     
     port = int(os.environ.get("PORT", 8000))
