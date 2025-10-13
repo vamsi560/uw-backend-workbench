@@ -77,6 +77,10 @@ app.add_middleware(
 # from guidewire_dashboard_api import router as guidewire_dashboard_router
 # app.include_router(guidewire_dashboard_router)
 
+# Include Guidewire data APIs for UI integration
+from guidewire_data_apis import guidewire_router
+app.include_router(guidewire_router)
+
 # --- End app creation ---
 
 # Pydantic model for audit trail response
