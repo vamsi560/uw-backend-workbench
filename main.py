@@ -66,17 +66,6 @@ app.add_middleware(
     allow_headers=["*"] if settings.cors_headers == "*" else settings.cors_headers.split(","),
 )
 
-# Dashboard router temporarily disabled for deployment
-# app.include_router(dashboard_router)
-
-# Include Guidewire integration router - temporarily disabled for deployment
-# from guidewire_endpoints import router as guidewire_router
-# app.include_router(guidewire_router)
-
-# Include Guidewire dashboard API router - temporarily disabled for deployment
-# from guidewire_dashboard_api import router as guidewire_dashboard_router
-# app.include_router(guidewire_dashboard_router)
-
 # Include Guidewire data APIs for UI integration
 try:
     from guidewire_data_apis import guidewire_router
@@ -84,6 +73,14 @@ try:
     logger.info("Guidewire data APIs successfully loaded")
 except Exception as e:
     logger.error(f"Failed to load Guidewire data APIs: {str(e)}")
+
+# Include test Guidewire router for debugging
+try:
+    from guidewire_test_apis import test_guidewire_router
+    app.include_router(test_guidewire_router)
+    logger.info("Test Guidewire APIs loaded")
+except Exception as e:
+    logger.error(f"Failed to load test Guidewire APIs: {str(e)}")
 
 # Test endpoint to verify deployment
 @app.get("/api/test/deployment")
@@ -94,8 +91,6 @@ async def test_deployment():
         "timestamp": datetime.now().isoformat(),
         "guidewire_apis_loaded": any("/api/guidewire" in str(route.path) for route in app.routes if hasattr(route, 'path'))
     }
-
-# --- End app creation ---
 
 # Pydantic model for audit trail response
 class SubmissionHistoryOut(BaseModel):
@@ -253,22 +248,6 @@ def get_workitems(
         )
         for sub in unique_submissions
     ]
-
-# Create FastAPI app
-app = FastAPI(
-    title="Underwriting Workbench API",
-    description="Backend API for insurance submission processing",
-    version="1.0.0"
-)
-
-# Configure CORS for Vercel deployment
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins.split(","),
-    allow_credentials=settings.cors_credentials,
-    allow_methods=["*"] if settings.cors_methods == "*" else settings.cors_methods.split(","),
-    allow_headers=["*"] if settings.cors_headers == "*" else settings.cors_headers.split(","),
-)
 
 # Create database tables on startup
 @app.on_event("startup")
