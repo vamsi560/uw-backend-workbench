@@ -78,8 +78,22 @@ app.add_middleware(
 # app.include_router(guidewire_dashboard_router)
 
 # Include Guidewire data APIs for UI integration
-from guidewire_data_apis import guidewire_router
-app.include_router(guidewire_router)
+try:
+    from guidewire_data_apis import guidewire_router
+    app.include_router(guidewire_router)
+    logger.info("Guidewire data APIs successfully loaded")
+except Exception as e:
+    logger.error(f"Failed to load Guidewire data APIs: {str(e)}")
+
+# Test endpoint to verify deployment
+@app.get("/api/test/deployment")
+async def test_deployment():
+    """Test endpoint to verify latest deployment"""
+    return {
+        "message": "Latest deployment active",
+        "timestamp": datetime.now().isoformat(),
+        "guidewire_apis_loaded": any("/api/guidewire" in str(route.path) for route in app.routes if hasattr(route, 'path'))
+    }
 
 # --- End app creation ---
 
