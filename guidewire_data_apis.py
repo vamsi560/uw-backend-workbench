@@ -638,3 +638,167 @@ async def export_submissions_data(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error exporting data: {str(e)}")
+
+# ================================
+# GUIDEWIRE NAVIGATION APIs
+# ================================
+
+@guidewire_router.get("/navigation/{job_id}/available-actions", response_model=Dict[str, Any])
+async def get_guidewire_navigation_actions(
+    job_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Get available Guidewire actions for a job based on official API links
+    Returns all available navigation endpoints from the official Guidewire response
+    """
+    try:
+        response = db.query(GuidewireResponse).filter(
+            GuidewireResponse.guidewire_job_id == job_id
+        ).first()
+        
+        if not response:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        # Extract navigation links from stored API response
+        navigation_actions = {}
+        if response.api_links:
+            # Parse the official Guidewire navigation structure
+            for action_name, action_data in response.api_links.items():
+                navigation_actions[action_name] = {
+                    "href": action_data.get("href", ""),
+                    "methods": action_data.get("methods", []),
+                    "description": _get_action_description(action_name)
+                }
+        
+        # Add our interpretation of what these actions do
+        action_categories = {
+            "data_retrieval": ["costs", "documents", "forms", "history-events", "lines", 
+                             "locations", "loss-history", "modifiers", "notes", "questions",
+                             "reinsurables", "towers", "transactions", "user-roles", "versions"],
+            "workflow_actions": ["bind", "cancel", "decline", "not-take", "withdraw", 
+                               "make-draft", "request-approval", "release-edit-lock"],
+            "data_modification": ["bound-copy", "copy-submission", "oos-conflicts"],
+            "business_data": ["payment-info", "payment-plans", "policy-sections", 
+                            "prior-policies", "uw-issues"],
+            "integrations": ["contingencies", "foreign-exchange-rates"]
+        }
+        
+        return {
+            "job_id": job_id,
+            "job_number": response.job_number,
+            "job_status": response.job_status,
+            "available_actions": navigation_actions,
+            "action_categories": {
+                category: [action for action in actions if action in navigation_actions]
+                for category, actions in action_categories.items()
+            },
+            "total_actions": len(navigation_actions)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching navigation actions: {str(e)}")
+
+def _get_action_description(action_name: str) -> str:
+    """Get human-readable description for Guidewire action"""
+    descriptions = {
+        "self": "View job/submission details",
+        "bind": "Bind the policy (finalize coverage)",
+        "cancel": "Cancel the submission",
+        "costs": "View cost breakdown and pricing details", 
+        "documents": "Access policy documents and forms",
+        "forms": "View and manage policy forms",
+        "history-events": "View submission history and audit trail",
+        "lines": "View policy lines and coverage details",
+        "locations": "Manage policy locations",
+        "loss-history": "View and update loss history",
+        "modifiers": "View policy modifiers and adjustments",
+        "notes": "Access submission notes and comments",
+        "payment-info": "Manage payment information",
+        "payment-plans": "View available payment plans",
+        "policy-sections": "View policy sections and structure",
+        "prior-policies": "Manage prior policy information",
+        "questions": "View underwriting questions",
+        "reinsurables": "View reinsurance information",
+        "towers": "View insurance tower structure",
+        "transactions": "View policy transactions",
+        "uw-issues": "Manage underwriting issues",
+        "user-roles": "View user permissions and roles",
+        "versions": "View policy version history",
+        "decline": "Decline the submission",
+        "not-take": "Mark submission as not taken",
+        "withdraw": "Withdraw the submission",
+        "make-draft": "Convert to draft status",
+        "request-approval": "Submit for approval",
+        "release-edit-lock": "Release editing lock",
+        "contingencies": "Manage policy contingencies",
+        "foreign-exchange-rates": "View currency exchange rates",
+        "bound-copy": "Create bound copy",
+        "copy-submission": "Copy submission to new",
+        "oos-conflicts": "View out-of-sequence conflicts"
+    }
+    return descriptions.get(action_name, f"Guidewire action: {action_name}")
+
+@guidewire_router.get("/status/summary", response_model=Dict[str, Any])
+async def get_guidewire_status_summary(db: Session = Depends(get_db)):
+    """
+    Get comprehensive status summary aligned with official Guidewire job statuses
+    - Status distribution from actual responses
+    - Official Guidewire status meanings
+    - Workflow progression indicators
+    """
+    try:
+        # Get all unique statuses from database
+        status_counts = db.query(
+            GuidewireResponse.job_status,
+            func.count(GuidewireResponse.id).label('count')
+        ).group_by(GuidewireResponse.job_status).all()
+        
+        # Official Guidewire status meanings
+        status_meanings = {
+            "Draft": "Submission in progress, can be edited",
+            "Quoted": "Quote generated, ready for binding",
+            "Bound": "Policy is active and bound",
+            "NotTaken": "Submission declined or not taken",
+            "Withdrawn": "Submission withdrawn by customer",
+            "Declined": "Submission declined by underwriter",
+            "Cancelled": "Policy cancelled after binding"
+        }
+        
+        # Workflow progression
+        workflow_stages = {
+            "Draft": {"stage": 1, "next_actions": ["quote", "decline", "withdraw"]},
+            "Quoted": {"stage": 2, "next_actions": ["bind", "decline", "not-take"]},
+            "Bound": {"stage": 3, "next_actions": ["cancel", "renew"]},
+            "NotTaken": {"stage": -1, "next_actions": []},
+            "Withdrawn": {"stage": -1, "next_actions": []},
+            "Declined": {"stage": -1, "next_actions": []},
+            "Cancelled": {"stage": -1, "next_actions": []}
+        }
+        
+        return {
+            "status_distribution": [
+                {
+                    "status": status or "Unknown",
+                    "count": count,
+                    "description": status_meanings.get(status, "Unknown status"),
+                    "workflow_stage": workflow_stages.get(status, {}).get("stage", 0),
+                    "next_actions": workflow_stages.get(status, {}).get("next_actions", [])
+                }
+                for status, count in status_counts
+            ],
+            "total_submissions": sum(count for _, count in status_counts),
+            "active_submissions": sum(
+                count for status, count in status_counts 
+                if status in ["Draft", "Quoted"]
+            ),
+            "completed_submissions": sum(
+                count for status, count in status_counts 
+                if status in ["Bound", "NotTaken", "Withdrawn", "Declined", "Cancelled"]
+            )
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching status summary: {str(e)}")
