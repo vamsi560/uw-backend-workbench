@@ -1144,6 +1144,42 @@ async def test_guidewire_connection():
         }
 
 
+@app.get("/api/test/outbound-ip")
+async def test_outbound_ip():
+    """Test what outbound IP address this app is using"""
+    try:
+        import httpx
+        
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            # Test multiple IP detection services
+            results = {}
+            
+            try:
+                response = await client.get("https://api.ipify.org")
+                results["ipify"] = response.text.strip()
+            except Exception as e:
+                results["ipify"] = f"Error: {str(e)}"
+            
+            try:
+                response = await client.get("https://httpbin.org/ip")
+                data = response.json()
+                results["httpbin"] = data.get("origin", "").split(",")[0].strip()
+            except Exception as e:
+                results["httpbin"] = f"Error: {str(e)}"
+        
+        return {
+            "timestamp": datetime.utcnow().isoformat(),
+            "outbound_ip_results": results,
+            "message": "Current outbound IP address(es)"
+        }
+        
+    except Exception as e:
+        return {
+            "error": f"Failed to check outbound IP: {str(e)}",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+
 # ===== Polling-based updates for Vercel compatibility =====
 
 @app.get("/api/workitems/poll", response_model=EnhancedPollingResponse)
