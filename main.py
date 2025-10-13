@@ -1114,6 +1114,36 @@ async def health_check():
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
 
+@app.get("/api/test/guidewire")
+async def test_guidewire_connection():
+    """Test Guidewire connection and authentication"""
+    try:
+        from guidewire_client import guidewire_client
+        
+        logger.info("Testing Guidewire connection...")
+        result = guidewire_client.test_connection()
+        
+        return {
+            "timestamp": datetime.utcnow().isoformat(),
+            "guidewire_test": result,
+            "configuration": {
+                "base_url": guidewire_client.config.base_url,
+                "auth_method": "basic_auth" if guidewire_client.config.username else "bearer_token",
+                "username": guidewire_client.config.username if guidewire_client.config.username else None
+            }
+        }
+    except Exception as e:
+        logger.error(f"Guidewire test failed: {str(e)}")
+        return {
+            "timestamp": datetime.utcnow().isoformat(),
+            "guidewire_test": {
+                "success": False,
+                "error": "Connection test failed",
+                "message": str(e)
+            }
+        }
+
+
 # ===== Polling-based updates for Vercel compatibility =====
 
 @app.get("/api/workitems/poll", response_model=EnhancedPollingResponse)
