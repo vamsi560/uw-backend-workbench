@@ -1227,6 +1227,42 @@ async def test_guidewire_submission(test_data: dict = None, db: Session = Depend
         }
 
 
+@app.post("/api/test/guidewire-simple")
+async def test_guidewire_simple_request():
+    """Test a simple Guidewire request to debug the 400 error"""
+    try:
+        from guidewire_client import guidewire_client
+        
+        # Test a simple request first - just get account types or product info
+        simple_payload = {
+            "requests": [
+                {
+                    "method": "get",
+                    "uri": "/account/v1/account-organization-types"
+                }
+            ]
+        }
+        
+        logger.info(f"Testing simple Guidewire request: {simple_payload}")
+        
+        result = guidewire_client.submit_composite_request(simple_payload)
+        
+        return {
+            "timestamp": datetime.utcnow().isoformat(),
+            "simple_request": simple_payload,
+            "guidewire_result": result,
+            "success": result.get("success", False)
+        }
+        
+    except Exception as e:
+        logger.error(f"Simple Guidewire test failed: {str(e)}", exc_info=True)
+        return {
+            "timestamp": datetime.utcnow().isoformat(),
+            "error": f"Simple test failed: {str(e)}",
+            "success": False
+        }
+
+
 @app.post("/api/workitems/{work_item_id}/submit-to-guidewire")
 async def submit_work_item_to_guidewire(work_item_id: int, db: Session = Depends(get_db)):
     """Submit a work item to Guidewire PolicyCenter"""
