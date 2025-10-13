@@ -86,10 +86,16 @@ except Exception as e:
 @app.get("/api/test/deployment")
 async def test_deployment():
     """Test endpoint to verify latest deployment"""
+    routes = [str(route.path) for route in app.routes if hasattr(route, 'path')]
+    guidewire_routes = [r for r in routes if '/api/guidewire' in r]
+    
     return {
         "message": "Latest deployment active",
         "timestamp": datetime.now().isoformat(),
-        "guidewire_apis_loaded": any("/api/guidewire" in str(route.path) for route in app.routes if hasattr(route, 'path'))
+        "total_routes": len(routes),
+        "guidewire_routes_count": len(guidewire_routes),
+        "guidewire_routes": guidewire_routes[:10],  # Show first 10
+        "guidewire_apis_loaded": len(guidewire_routes) > 0
     }
 
 # Pydantic model for audit trail response
