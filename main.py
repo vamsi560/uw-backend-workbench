@@ -1180,6 +1180,182 @@ async def test_outbound_ip():
         }
 
 
+@app.post("/api/test/guidewire-submission")
+async def test_guidewire_submission(test_data: dict = None, db: Session = Depends(get_db)):
+    """Test creating a complete Guidewire submission using sample data"""
+    try:
+        from guidewire_client import guidewire_client
+        
+        # Use provided test data or create sample data
+        sample_submission_data = test_data or {
+            "company_name": "Test Insurance Company LLC",
+            "named_insured": "Test Insurance Company LLC", 
+            "contact_name": "John Smith",
+            "contact_email": "john.smith@testcompany.com",
+            "contact_phone": "555-123-4567",
+            "business_address": "123 Business St",
+            "business_city": "Seattle",
+            "business_state": "WA",
+            "business_zip": "98101",
+            "industry": "technology",
+            "employee_count": "50",
+            "annual_revenue": "5000000",
+            "coverage_amount": "1000000",
+            "policy_type": "cyber liability",
+            "effective_date": "2025-01-01",
+            "entity_type": "llc"
+        }
+        
+        logger.info(f"Testing Guidewire submission with data: {sample_submission_data}")
+        
+        # Create the submission in Guidewire
+        result = guidewire_client.create_cyber_submission(sample_submission_data)
+        
+        return {
+            "timestamp": datetime.utcnow().isoformat(),
+            "test_submission_data": sample_submission_data,
+            "guidewire_result": result,
+            "success": result.get("success", False)
+        }
+        
+    except Exception as e:
+        logger.error(f"Guidewire submission test failed: {str(e)}", exc_info=True)
+        return {
+            "timestamp": datetime.utcnow().isoformat(),
+            "error": f"Submission test failed: {str(e)}",
+            "success": False
+        }
+
+
+@app.post("/api/workitems/{work_item_id}/submit-to-guidewire")
+async def submit_work_item_to_guidewire(work_item_id: int, db: Session = Depends(get_db)):
+    """Submit a work item to Guidewire PolicyCenter"""
+    try:
+        from guidewire_client import guidewire_client
+        
+        # Get the work item and related submission
+        work_item = db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
+        if not work_item:
+            raise HTTPException(status_code=404, detail="Work item not found")
+        
+        submission = db.query(Submission).filter(Submission.id == work_item.submission_id).first()
+        if not submission:
+            raise HTTPException(status_code=404, detail="Related submission not found")
+        
+        # Parse extracted fields from submission
+        extracted_data = _parse_extracted_fields(submission.extracted_fields) if submission.extracted_fields else {}
+        
+        # Combine work item and submission data
+        submission_data = {
+            # Company information
+            "company_name": extracted_data.get("company_name") or extracted_data.get("named_insured", "Unknown Company"),
+            "named_insured": extracted_data.get("named_insured", "Unknown Company"),
+            "contact_name": extracted_data.get("contact_name") or extracted_data.get("insured_name", "Unknown Contact"),
+            "contact_email": submission.sender_email or extracted_data.get("contact_email", "unknown@example.com"),
+            "contact_phone": extracted_data.get("contact_phone", "555-000-0000"),
+            
+            # Business address
+            "business_address": extracted_data.get("business_address") or extracted_data.get("mailing_address", "Address Not Provided"),
+            "business_city": extracted_data.get("business_city") or extracted_data.get("mailing_city", "Unknown"),
+            "business_state": extracted_data.get("business_state") or extracted_data.get("mailing_state", "CA"),
+            "business_zip": extracted_data.get("business_zip") or extracted_data.get("mailing_zip", "00000"),
+            
+            # Business details from work item
+            "industry": work_item.industry or extracted_data.get("industry", "other"),
+            "employee_count": str(extracted_data.get("employee_count", "1")),
+            "annual_revenue": str(work_item.coverage_amount or extracted_data.get("annual_revenue", "100000")),
+            "coverage_amount": str(work_item.coverage_amount or extracted_data.get("coverage_amount", "50000")),
+            "policy_type": work_item.policy_type or extracted_data.get("policy_type", "cyber liability"),
+            "effective_date": extracted_data.get("effective_date", datetime.now().strftime("%Y-%m-%d")),
+            "entity_type": extracted_data.get("entity_type", "other"),
+            
+            # Additional fields
+            "years_in_business": extracted_data.get("years_in_business", "5"),
+            "data_types": extracted_data.get("data_types", "general"),
+            "business_description": extracted_data.get("business_description", work_item.description)
+        }
+        
+        logger.info(f"Submitting work item {work_item_id} to Guidewire with data: {submission_data}")
+        
+        # Submit to Guidewire
+        result = guidewire_client.create_cyber_submission(submission_data)
+        
+        if result.get("success"):
+            # Store the Guidewire response data
+            try:
+                guidewire_response_id = guidewire_client.store_guidewire_response(
+                    db=db,
+                    work_item_id=work_item_id,
+                    submission_id=work_item.submission_id,
+                    parsed_data=result.get("parsed_data", {}),
+                    raw_response=result.get("raw_response", {})
+                )
+                
+                # Update work item status
+                work_item.status = WorkItemStatus.IN_REVIEW
+                work_item.assigned_to = result.get("assigned_underwriter") or work_item.assigned_to
+                work_item.updated_at = datetime.utcnow()
+                
+                # Add history entry
+                history_entry = WorkItemHistory(
+                    work_item_id=work_item.id,
+                    action="submitted_to_guidewire",
+                    changed_by="System",
+                    timestamp=datetime.utcnow(),
+                    details={
+                        "guidewire_account_id": result.get("account_id"),
+                        "guidewire_job_id": result.get("job_id"),
+                        "account_number": result.get("account_number"),
+                        "job_number": result.get("job_number"),
+                        "guidewire_response_id": guidewire_response_id
+                    }
+                )
+                db.add(history_entry)
+                
+                db.commit()
+                db.refresh(work_item)
+                
+                return {
+                    "success": True,
+                    "work_item_id": work_item_id,
+                    "guidewire_account_id": result.get("account_id"),
+                    "guidewire_job_id": result.get("job_id"),
+                    "account_number": result.get("account_number"),
+                    "job_number": result.get("job_number"),
+                    "quote_info": result.get("quote_info", {}),
+                    "guidewire_response_id": guidewire_response_id,
+                    "message": "Work item successfully submitted to Guidewire PolicyCenter"
+                }
+            except Exception as db_error:
+                logger.error(f"Error storing Guidewire response: {str(db_error)}")
+                # Still return success since Guidewire submission worked
+                return {
+                    "success": True,
+                    "work_item_id": work_item_id,
+                    "guidewire_result": result,
+                    "warning": f"Guidewire submission successful but failed to store response: {str(db_error)}",
+                    "message": "Work item successfully submitted to Guidewire PolicyCenter"
+                }
+        else:
+            return {
+                "success": False,
+                "work_item_id": work_item_id,
+                "error": result.get("error", "Unknown error"),
+                "message": result.get("message", "Guidewire submission failed"),
+                "details": result
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error submitting work item {work_item_id} to Guidewire: {str(e)}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error submitting to Guidewire: {str(e)}"
+        )
+
+
 # ===== Polling-based updates for Vercel compatibility =====
 
 @app.get("/api/workitems/poll", response_model=EnhancedPollingResponse)
