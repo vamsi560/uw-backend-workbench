@@ -82,20 +82,97 @@ try:
 except Exception as e:
     logger.error(f"Failed to load test Guidewire APIs: {str(e)}")
 
+# Include underwriting workflow APIs
+try:
+    from underwriting_workflow import underwriting_router
+    app.include_router(underwriting_router)
+    logger.info("Underwriting workflow APIs loaded")
+except Exception as e:
+    logger.error(f"Failed to load underwriting workflow APIs: {str(e)}")
+
+# Include risk assessment APIs
+try:
+    from risk_assessment_api import risk_router
+    app.include_router(risk_router)
+    logger.info("Risk assessment APIs loaded")
+except Exception as e:
+    logger.error(f"Failed to load risk assessment APIs: {str(e)}")
+
+# Include document management APIs
+try:
+    from document_management import document_router
+    app.include_router(document_router)
+    logger.info("Document management APIs loaded")
+except Exception as e:
+    logger.error(f"Failed to load document management APIs: {str(e)}")
+
+# Include user management and notification APIs
+try:
+    from user_notification_system import user_router, notification_router
+    app.include_router(user_router)
+    app.include_router(notification_router)
+    logger.info("User management and notification APIs loaded")
+except Exception as e:
+    logger.error(f"Failed to load user management and notification APIs: {str(e)}")
+
+# Include system dashboard APIs
+try:
+    from system_dashboard import dashboard_router
+    app.include_router(dashboard_router)
+    logger.info("System dashboard APIs loaded")
+except Exception as e:
+    logger.error(f"Failed to load system dashboard APIs: {str(e)}")
+
 # Test endpoint to verify deployment
 @app.get("/api/test/deployment")
 async def test_deployment():
     """Test endpoint to verify latest deployment"""
     routes = [str(route.path) for route in app.routes if hasattr(route, 'path')]
     guidewire_routes = [r for r in routes if '/api/guidewire' in r]
+    underwriting_routes = [r for r in routes if '/api/underwriting' in r]
+    risk_routes = [r for r in routes if '/api/risk' in r]
+    document_routes = [r for r in routes if '/api/documents' in r]
+    user_routes = [r for r in routes if '/api/users' in r or '/api/notifications' in r]
+    dashboard_routes = [r for r in routes if '/api/dashboard' in r]
     
     return {
-        "message": "Latest deployment active",
+        "message": "Complete underwriting workbench deployment active",
         "timestamp": datetime.now().isoformat(),
         "total_routes": len(routes),
-        "guidewire_routes_count": len(guidewire_routes),
-        "guidewire_routes": guidewire_routes[:10],  # Show first 10
-        "guidewire_apis_loaded": len(guidewire_routes) > 0
+        "api_modules": {
+            "guidewire_apis": {
+                "count": len(guidewire_routes),
+                "routes": guidewire_routes[:5]  # Show first 5
+            },
+            "underwriting_workflow": {
+                "count": len(underwriting_routes),
+                "routes": underwriting_routes[:5]
+            },
+            "risk_assessment": {
+                "count": len(risk_routes),
+                "routes": risk_routes[:5]
+            },
+            "document_management": {
+                "count": len(document_routes),
+                "routes": document_routes[:5]
+            },
+            "user_notifications": {
+                "count": len(user_routes),
+                "routes": user_routes[:5]
+            },
+            "system_dashboard": {
+                "count": len(dashboard_routes),
+                "routes": dashboard_routes[:5]
+            }
+        },
+        "features_loaded": {
+            "guidewire_integration": len(guidewire_routes) > 0,
+            "underwriting_workflow": len(underwriting_routes) > 0,
+            "risk_assessment": len(risk_routes) > 0,
+            "document_management": len(document_routes) > 0,
+            "user_management": len(user_routes) > 0,
+            "system_dashboard": len(dashboard_routes) > 0
+        }
     }
 
 # Pydantic model for audit trail response
