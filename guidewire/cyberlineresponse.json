@@ -1,0 +1,1204 @@
+{
+    "responses": [
+        {
+            "body": {
+                "data": {
+                    "attributes": {
+                        "accountHolder": {
+                            "displayName": "Ctrl-Alt-Del Solutions",
+                            "id": "pc:SEMZvTQ_RuRWEPBnCmh2k",
+                            "type": "AccountContact",
+                            "uri": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/contacts/pc:SEMZvTQ_RuRWEPBnCmh2k"
+                        },
+                        "accountNumber": "4901420895",
+                        "accountStatus": {
+                            "code": "Pending",
+                            "name": "Pending"
+                        },
+                        "frozen": false,
+                        "id": "pc:SAT9n354FTKe5a3OKtrfy",
+                        "numberOfContacts": "1",
+                        "organizationType": {
+                            "code": "other",
+                            "name": "Other"
+                        },
+                        "preferredCoverageCurrency": {
+                            "code": "usd",
+                            "name": "USD"
+                        },
+                        "preferredSettlementCurrency": {
+                            "code": "usd",
+                            "name": "USD"
+                        },
+                        "primaryLanguage": {
+                            "code": "en_US",
+                            "name": "English (US)"
+                        },
+                        "primaryLocale": {
+                            "code": "en_US",
+                            "name": "United States (English)"
+                        },
+                        "primaryLocation": {
+                            "displayName": "1: 2850 S. Delaware St., San Mateo, CA",
+                            "id": "pc:SH5fnkBTnk2ZeDvXlpnlv",
+                            "type": "AccountLocation",
+                            "uri": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/locations/pc:SH5fnkBTnk2ZeDvXlpnlv"
+                        },
+                        "producerCodes": [
+                            {
+                                "displayName": "QA1PRODUCERCODE01",
+                                "id": "pc:2",
+                                "type": "ProducerCode",
+                                "uri": "/admin/v1/producer-codes/pc:2"
+                            }
+                        ]
+                    },
+                    "checksum": "0",
+                    "links": {
+                        "activities": {
+                            "href": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/activities",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "activity-assignees": {
+                            "href": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/activity-assignees",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "activity-patterns": {
+                            "href": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/activity-patterns",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "contacts": {
+                            "href": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/contacts",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "do-not-destroy": {
+                            "href": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/do-not-destroy",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "documents": {
+                            "href": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/documents",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "freeze": {
+                            "href": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/freeze",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "history-events": {
+                            "href": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/history-events",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "jobs": {
+                            "href": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/jobs",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "locations": {
+                            "href": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/locations",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "merge": {
+                            "href": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/merge",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "move-policies": {
+                            "href": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/move-policies",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "move-submissions": {
+                            "href": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/move-submissions",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "notes": {
+                            "href": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/notes",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "policies": {
+                            "href": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/policies",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "self": {
+                            "href": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy",
+                            "methods": [
+                                "get",
+                                "patch"
+                            ]
+                        },
+                        "user-roles": {
+                            "href": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/user-roles",
+                            "methods": [
+                                "get",
+                                "patch"
+                            ]
+                        },
+                        "withdraw": {
+                            "href": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy/withdraw",
+                            "methods": [
+                                "post"
+                            ]
+                        }
+                    }
+                }
+            },
+            "headers": {
+                "GW-Checksum": "0",
+                "Location": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy"
+            },
+            "status": 201
+        },
+        {
+            "body": {
+                "data": {
+                    "attributes": {
+                        "account": {
+                            "displayName": "4901420895",
+                            "id": "pc:SAT9n354FTKe5a3OKtrfy",
+                            "type": "Account",
+                            "uri": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy"
+                        },
+                        "baseState": {
+                            "code": "CA",
+                            "name": "California"
+                        },
+                        "id": "pc:S9Z7G9A7dGlQCKdKlc-G6",
+                        "jobEffectiveDate": "2025-07-31T18:31:00.000Z",
+                        "jobNumber": "0001563719",
+                        "jobStatus": {
+                            "code": "Draft",
+                            "name": "Draft"
+                        },
+                        "jobType": {
+                            "code": "Submission",
+                            "name": "Submission"
+                        },
+                        "organization": {
+                            "displayName": "ACV Property Insurance",
+                            "id": "pc:4",
+                            "type": "Organization",
+                            "uri": "/admin/v1/organizations/pc:4"
+                        },
+                        "organizationOfService": {
+                            "displayName": "ACV Property Insurance",
+                            "id": "pc:4",
+                            "type": "Organization",
+                            "uri": "/admin/v1/organizations/pc:4"
+                        },
+                        "periodEnd": "2026-07-31T18:31:00.000Z",
+                        "periodStart": "2025-07-31T18:31:00.000Z",
+                        "policyAddress": {
+                            "addressLine1": "Space Bar - Backspace",
+                            "addressType": {
+                                "code": "business",
+                                "name": "Business"
+                            },
+                            "city": "San Mateo",
+                            "country": "US",
+                            "displayName": "Space Bar - Backspace, San Mateo, CA 94403",
+                            "id": "316",
+                            "postalCode": "94403",
+                            "primaryNamedInsuredAddress": {
+                                "displayName": "Space Bar - Backspace, San Mateo, CA 94403",
+                                "id": "pc:SVtGLEqJSN_TYz5qs7h8t"
+                            },
+                            "state": {
+                                "code": "CA",
+                                "name": "California"
+                            }
+                        },
+                        "preferredCoverageCurrency": {
+                            "code": "usd",
+                            "name": "USD"
+                        },
+                        "preferredSettlementCurrency": {
+                            "code": "usd",
+                            "name": "USD"
+                        },
+                        "primaryInsured": {
+                            "displayName": "Ctrl-Alt-Del Solutions",
+                            "id": "pc:SEMZvTQ_RuRWEPBnCmh2k",
+                            "type": "PolicyContact",
+                            "uri": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/contacts/pc:SEMZvTQ_RuRWEPBnCmh2k"
+                        },
+                        "primaryLocation": {
+                            "displayName": "1: 2850 S. Delaware St., San Mateo, CA",
+                            "id": "216",
+                            "type": "PolicyLocation",
+                            "uri": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/locations/216"
+                        },
+                        "producerCode": {
+                            "displayName": "301-008578",
+                            "id": "pc:16",
+                            "type": "ProducerCode",
+                            "uri": "/admin/v1/producer-codes/pc:16"
+                        },
+                        "producerCodeOfService": {
+                            "displayName": "301-008578",
+                            "id": "pc:16",
+                            "type": "ProducerCode",
+                            "uri": "/admin/v1/producer-codes/pc:16"
+                        },
+                        "product": {
+                            "displayName": "Cyber",
+                            "id": "USCyber"
+                        },
+                        "quoteType": {
+                            "code": "Full",
+                            "name": "Full Application"
+                        },
+                        "termType": {
+                            "code": "Annual",
+                            "name": "Annual"
+                        },
+                        "uwCompany": {
+                            "code": {
+                                "code": "default",
+                                "name": "Default"
+                            },
+                            "displayName": "Default",
+                            "id": "apd:1"
+                        }
+                    },
+                    "checksum": "deadf241ff1e3c5953ff0505f96fe92d",
+                    "links": {
+                        "activities": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/activities",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "activity-assignees": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/activity-assignees",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "activity-patterns": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/activity-patterns",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "additional-named-insureds": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/additional-named-insureds",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "assessment-summaries": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/assessment-summaries",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "change-effective-date": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/change-effective-date",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "change-primary-named-insured": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/change-primary-named-insured",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "change-version": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/change-version",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "coinsurance-agreements": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/coinsurance-agreements",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "contacts": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/contacts",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "contingencies": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/contingencies",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "copy-submission": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/copy-submission",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "costs": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/costs",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "decline": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/decline",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "documents": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/documents",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "edit-lock": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/edit-lock",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "foreign-exchange-rates": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/foreign-exchange-rates",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "forms": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/forms",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "history-events": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/history-events",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "lines": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/lines",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "locations": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/locations",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "loss-history": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/loss-history",
+                            "methods": [
+                                "get",
+                                "patch"
+                            ]
+                        },
+                        "make-draft": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/make-draft",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "modifiers": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/modifiers",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "not-take": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/not-take",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "notes": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/notes",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "oos-conflicts": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/oos-conflicts",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "payment-plans": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/payment-plans",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "policy-sections": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/policy-sections",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "prior-policies": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/prior-policies",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "questions": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/questions",
+                            "methods": [
+                                "get",
+                                "patch"
+                            ]
+                        },
+                        "quote": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/quote",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "reinsurables": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/reinsurables",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "request-approval": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/request-approval",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "self": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6",
+                            "methods": [
+                                "get",
+                                "patch"
+                            ]
+                        },
+                        "sync-modifiers": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/sync-modifiers",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "sync-questions": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/sync-questions",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "towers": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/towers",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "transactions": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/transactions",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "user-roles": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/user-roles",
+                            "methods": [
+                                "get",
+                                "patch"
+                            ]
+                        },
+                        "uw-issues": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/uw-issues",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "versions": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/versions",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "withdraw": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/withdraw",
+                            "methods": [
+                                "post"
+                            ]
+                        }
+                    }
+                }
+            },
+            "headers": {
+                "GW-Checksum": "deadf241ff1e3c5953ff0505f96fe92d",
+                "Location": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6"
+            },
+            "status": 201
+        },
+        {
+            "body": {
+                "data": {
+                    "attributes": {
+                        "clauseType": "coverage",
+                        "id": "ACLCommlCyberLiability",
+                        "pattern": {
+                            "displayName": "Commercial Cyber Liability",
+                            "id": "ACLCommlCyberLiability"
+                        },
+                        "priority": 1,
+                        "selected": true,
+                        "terms": {
+                            "ACLCommlCyberLiabilityBusIncLimit": {
+                                "choiceValue": {
+                                    "code": "10Kusd",
+                                    "name": "10,000",
+                                    "values": [
+                                        {
+                                            "value": "10000",
+                                            "valueType": {
+                                                "code": "money",
+                                                "name": "Money"
+                                            }
+                                        }
+                                    ]
+                                },
+                                "covTermType": "choice",
+                                "displayValue": "10,000",
+                                "pattern": {
+                                    "displayName": "Business Income and Extra Expense Aggregate Sublimit",
+                                    "id": "ACLCommlCyberLiabilityBusIncLimit"
+                                }
+                            },
+                            "ACLCommlCyberLiabilityCyberAggLimit": {
+                                "choiceValue": {
+                                    "code": "50Kusd",
+                                    "name": "50,000",
+                                    "values": [
+                                        {
+                                            "value": "50000",
+                                            "valueType": {
+                                                "code": "money",
+                                                "name": "Money"
+                                            }
+                                        }
+                                    ]
+                                },
+                                "covTermType": "choice",
+                                "displayValue": "50,000",
+                                "pattern": {
+                                    "displayName": "Policy Aggregate Limit",
+                                    "id": "ACLCommlCyberLiabilityCyberAggLimit"
+                                }
+                            },
+                            "ACLCommlCyberLiabilityExtortion": {
+                                "choiceValue": {
+                                    "code": "5Kusd",
+                                    "name": "5,000",
+                                    "values": [
+                                        {
+                                            "value": "5000",
+                                            "valueType": {
+                                                "code": "money",
+                                                "name": "Money"
+                                            }
+                                        }
+                                    ]
+                                },
+                                "covTermType": "choice",
+                                "displayValue": "5,000",
+                                "pattern": {
+                                    "displayName": "Extortion Threat - Ransom Payments Aggregate Sublimit",
+                                    "id": "ACLCommlCyberLiabilityExtortion"
+                                }
+                            },
+                            "ACLCommlCyberLiabilityInclComputerFraud": {
+                                "covTermType": "typekey",
+                                "pattern": {
+                                    "displayName": "Include Computer and Funds Transfer Fraud",
+                                    "id": "ACLCommlCyberLiabilityInclComputerFraud"
+                                }
+                            },
+                            "ACLCommlCyberLiabilityPublicRelations": {
+                                "choiceValue": {
+                                    "code": "5Kusd",
+                                    "name": "5,000",
+                                    "values": [
+                                        {
+                                            "value": "5000",
+                                            "valueType": {
+                                                "code": "money",
+                                                "name": "Money"
+                                            }
+                                        }
+                                    ]
+                                },
+                                "covTermType": "choice",
+                                "displayValue": "5,000",
+                                "pattern": {
+                                    "displayName": "Public Relations Expense Aggregate Sublimit",
+                                    "id": "ACLCommlCyberLiabilityPublicRelations"
+                                }
+                            },
+                            "ACLCommlCyberLiabilityRetention": {
+                                "choiceValue": {
+                                    "code": "75Kusd",
+                                    "name": "7,500",
+                                    "values": [
+                                        {
+                                            "value": "7500",
+                                            "valueType": {
+                                                "code": "money",
+                                                "name": "Money"
+                                            }
+                                        }
+                                    ]
+                                },
+                                "covTermType": "choice",
+                                "displayValue": "7,500",
+                                "pattern": {
+                                    "displayName": "Retention",
+                                    "id": "ACLCommlCyberLiabilityRetention"
+                                }
+                            },
+                            "ACLCommlCyberLiabilityWaitingPeriod": {
+                                "choiceValue": {
+                                    "code": "12HR",
+                                    "name": "12 hrs",
+                                    "values": [
+                                        {
+                                            "value": "0",
+                                            "valueType": {
+                                                "code": "other",
+                                                "name": "Other"
+                                            }
+                                        }
+                                    ]
+                                },
+                                "covTermType": "choice",
+                                "displayValue": "12 hrs",
+                                "pattern": {
+                                    "displayName": "Waiting Period",
+                                    "id": "ACLCommlCyberLiabilityWaitingPeriod"
+                                }
+                            }
+                        }
+                    },
+                    "checksum": "d1832e217cc43c306f5f90fa5be4e192",
+                    "links": {
+                        "self": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/lines/USCyberLine/coverages/ACLCommlCyberLiability",
+                            "methods": [
+                                "delete",
+                                "get",
+                                "patch"
+                            ]
+                        }
+                    }
+                }
+            },
+            "headers": {
+                "GW-Checksum": "d1832e217cc43c306f5f90fa5be4e192",
+                "Location": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/lines/USCyberLine/coverages/ACLCommlCyberLiability"
+            },
+            "status": 201
+        },
+        {
+            "body": {
+                "data": {
+                    "attributes": {
+                        "aclDateBusinessStarted": "2024-10-07T18:30:00.000Z",
+                        "aclPolicyType": {
+                            "code": "commercialcyber",
+                            "name": "Commercial Cyber"
+                        },
+                        "aclTotalAssets": "1212121.00",
+                        "aclTotalFTEmployees": 20,
+                        "aclTotalLiabilities": "12121.00",
+                        "aclTotalPTEmployees": 20,
+                        "aclTotalPayroll": "40.00",
+                        "aclTotalRevenues": "121212.00",
+                        "coverableJurisdiction": {
+                            "code": "CA",
+                            "name": "California"
+                        },
+                        "pattern": {
+                            "displayName": "Cyber Line",
+                            "id": "USCyberLine"
+                        }
+                    },
+                    "checksum": "4df825943b86845c5e09ef4854c83f5b",
+                    "links": {
+                        "acl-cyber-classifications": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/lines/USCyberLine/acl-cyber-classifications",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "coverages": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/lines/USCyberLine/coverages",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "self": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/lines/USCyberLine",
+                            "methods": [
+                                "get",
+                                "patch"
+                            ]
+                        },
+                        "sync-coverages": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/lines/USCyberLine/sync-coverages",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "sync-fields": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/lines/USCyberLine/sync-fields",
+                            "methods": [
+                                "post"
+                            ]
+                        }
+                    }
+                }
+            },
+            "headers": {
+                "GW-Checksum": "4df825943b86845c5e09ef4854c83f5b"
+            },
+            "status": 200
+        },
+        {
+            "body": {
+                "data": {
+                    "attributes": {
+                        "account": {
+                            "displayName": "4901420895",
+                            "id": "pc:SAT9n354FTKe5a3OKtrfy",
+                            "type": "Account",
+                            "uri": "/account/v1/accounts/pc:SAT9n354FTKe5a3OKtrfy"
+                        },
+                        "baseState": {
+                            "code": "CA",
+                            "name": "California"
+                        },
+                        "editLocked": true,
+                        "id": "pc:S9Z7G9A7dGlQCKdKlc-G6",
+                        "jobEffectiveDate": "2025-07-31T18:31:00.000Z",
+                        "jobNumber": "0001563719",
+                        "jobStatus": {
+                            "code": "Quoted",
+                            "name": "Quoted"
+                        },
+                        "jobType": {
+                            "code": "Submission",
+                            "name": "Submission"
+                        },
+                        "organization": {
+                            "displayName": "ACV Property Insurance",
+                            "id": "pc:4",
+                            "type": "Organization",
+                            "uri": "/admin/v1/organizations/pc:4"
+                        },
+                        "organizationOfService": {
+                            "displayName": "ACV Property Insurance",
+                            "id": "pc:4",
+                            "type": "Organization",
+                            "uri": "/admin/v1/organizations/pc:4"
+                        },
+                        "periodEnd": "2026-07-31T18:31:00.000Z",
+                        "periodStart": "2025-07-31T18:31:00.000Z",
+                        "policyAddress": {
+                            "addressLine1": "Space Bar - Backspace",
+                            "addressType": {
+                                "code": "business",
+                                "name": "Business"
+                            },
+                            "city": "San Mateo",
+                            "country": "US",
+                            "displayName": "Space Bar - Backspace, San Mateo, CA 94403",
+                            "id": "316",
+                            "postalCode": "94403",
+                            "primaryNamedInsuredAddress": {
+                                "displayName": "Space Bar - Backspace, San Mateo, CA 94403",
+                                "id": "pc:SVtGLEqJSN_TYz5qs7h8t"
+                            },
+                            "state": {
+                                "code": "CA",
+                                "name": "California"
+                            }
+                        },
+                        "preferredCoverageCurrency": {
+                            "code": "usd",
+                            "name": "USD"
+                        },
+                        "preferredSettlementCurrency": {
+                            "code": "usd",
+                            "name": "USD"
+                        },
+                        "primaryInsured": {
+                            "displayName": "Ctrl-Alt-Del Solutions",
+                            "id": "pc:SEMZvTQ_RuRWEPBnCmh2k",
+                            "type": "PolicyContact",
+                            "uri": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/contacts/pc:SEMZvTQ_RuRWEPBnCmh2k"
+                        },
+                        "primaryLocation": {
+                            "displayName": "1: 2850 S. Delaware St., San Mateo, CA",
+                            "id": "216",
+                            "type": "PolicyLocation",
+                            "uri": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/locations/216"
+                        },
+                        "producerCode": {
+                            "displayName": "301-008578",
+                            "id": "pc:16",
+                            "type": "ProducerCode",
+                            "uri": "/admin/v1/producer-codes/pc:16"
+                        },
+                        "producerCodeOfService": {
+                            "displayName": "301-008578",
+                            "id": "pc:16",
+                            "type": "ProducerCode",
+                            "uri": "/admin/v1/producer-codes/pc:16"
+                        },
+                        "product": {
+                            "displayName": "Cyber",
+                            "id": "USCyber"
+                        },
+                        "quoteType": {
+                            "code": "Full",
+                            "name": "Full Application"
+                        },
+                        "rateAsOfDate": "2025-10-08T10:33:03.194Z",
+                        "taxesAndSurcharges": {
+                            "amount": "0.00",
+                            "currency": "usd"
+                        },
+                        "termType": {
+                            "code": "Annual",
+                            "name": "Annual"
+                        },
+                        "totalCost": {
+                            "amount": "1.00",
+                            "currency": "usd"
+                        },
+                        "totalPremium": {
+                            "amount": "1.00",
+                            "currency": "usd"
+                        },
+                        "uwCompany": {
+                            "code": {
+                                "code": "default",
+                                "name": "Default"
+                            },
+                            "displayName": "Default",
+                            "id": "apd:1"
+                        }
+                    },
+                    "checksum": "deadf241ff1e3c5953ff0505f96fe92d",
+                    "links": {
+                        "activities": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/activities",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "activity-assignees": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/activity-assignees",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "activity-patterns": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/activity-patterns",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "additional-named-insureds": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/additional-named-insureds",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "assessment-summaries": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/assessment-summaries",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "bind-and-issue": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/bind-and-issue",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "bind-only": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/bind-only",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "change-version": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/change-version",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "coinsurance-agreements": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/coinsurance-agreements",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "contacts": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/contacts",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "contingencies": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/contingencies",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "copy-submission": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/copy-submission",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "costs": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/costs",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "decline": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/decline",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "documents": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/documents",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "foreign-exchange-rates": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/foreign-exchange-rates",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "forms": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/forms",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "history-events": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/history-events",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "lines": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/lines",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "locations": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/locations",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "loss-history": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/loss-history",
+                            "methods": [
+                                "get",
+                                "patch"
+                            ]
+                        },
+                        "make-draft": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/make-draft",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "modifiers": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/modifiers",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "not-take": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/not-take",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "notes": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/notes",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "oos-conflicts": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/oos-conflicts",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "payment-info": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/payment-info",
+                            "methods": [
+                                "get",
+                                "patch"
+                            ]
+                        },
+                        "payment-plans": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/payment-plans",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "policy-sections": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/policy-sections",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "prior-policies": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/prior-policies",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "questions": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/questions",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "reinsurables": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/reinsurables",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "release-edit-lock": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/release-edit-lock",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "request-approval": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/request-approval",
+                            "methods": [
+                                "post"
+                            ]
+                        },
+                        "self": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "towers": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/towers",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "transactions": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/transactions",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "user-roles": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/user-roles",
+                            "methods": [
+                                "get"
+                            ]
+                        },
+                        "uw-issues": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/uw-issues",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "versions": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/versions",
+                            "methods": [
+                                "get",
+                                "post"
+                            ]
+                        },
+                        "withdraw": {
+                            "href": "/job/v1/jobs/pc:S9Z7G9A7dGlQCKdKlc-G6/withdraw",
+                            "methods": [
+                                "post"
+                            ]
+                        }
+                    }
+                }
+            },
+            "headers": {
+                "GW-Checksum": "deadf241ff1e3c5953ff0505f96fe92d"
+            },
+            "status": 200
+        }
+    ]
+}

@@ -1,0 +1,158 @@
+{
+  "requests": [
+    {
+      "method": "post",
+      "uri": "/account/v1/accounts",
+      "body": {
+        "data": {
+          "attributes": {
+            "initialAccountHolder": {
+              "contactSubtype": "Company",
+              "companyName": "Ctrl-Alt-Del Solutions",
+              "taxId": "12-1212121",
+              "primaryAddress": {
+                "addressLine1": "Space Bar - Backspace",
+                "city": "San Mateo",
+                "postalCode": "94403",
+                "state": {
+                  "code": "CA"
+                }
+              }
+            },
+            "initialPrimaryLocation": {
+              "addressLine1": "2850 S. Delaware St.",
+              "city": "San Mateo",
+              "postalCode": "94403",
+              "state": {
+                "code": "CA"
+              }
+            },
+            "producerCodes": [
+              {
+                "id": "pc:2"
+              }
+            ], 
+            "organizationType": {
+              "code": "other" 
+            }
+          }
+        }
+      },           
+      "vars": [
+        {
+          "name": "accountId",
+          "path": "$.data.attributes.id"
+        },
+        {
+          "name": "driverId",
+          "path": "$.data.attributes.accountHolder.id"
+        }
+      ]
+    },
+    {
+      "method": "post",
+      "uri": "/job/v1/submissions",
+      "body": {
+        "data": {
+          "attributes": {
+            "account": {
+              "id": "${accountId}"
+            },
+            "baseState": {
+              "code": "CA"
+            },
+            "jobEffectiveDate": "2025-08-01",
+            "producerCode": {
+              "id": "pc:16"
+            },
+            "product": {
+              "id": "USCyber"
+            }
+          }
+        }
+      },
+      "vars": [
+        {
+          "name": "jobId",
+          "path": "$.data.attributes.id"
+        }
+      ]
+    },
+    {
+            "method": "post",
+            "uri": "/job/v1/jobs/${jobId}/lines/USCyberLine/coverages",
+            "body": {
+                "data": {
+                    "attributes": {
+                        "pattern": {
+                            "id": "ACLCommlCyberLiability"
+                        },
+                        "terms": {
+                            "ACLCommlCyberLiabilityBusIncLimit": {
+                                "choiceValue": {
+                                    "code": "10Kusd",
+                                    "name": "10,000"
+                                }
+                            },
+                            "ACLCommlCyberLiabilityCyberAggLimit": {
+                                "choiceValue": {
+                                    "code": "50Kusd",
+                                    "name": "50,000"
+                                }
+                            },
+                            "ACLCommlCyberLiabilityExtortion": {
+                                "choiceValue": {
+                                    "code": "5Kusd",
+                                    "name": "5,000"
+                                }
+                            },
+                            "ACLCommlCyberLiabilityPublicRelations": {
+                                "choiceValue": {
+                                    "code": "5Kusd",
+                                    "name": "5000"
+                                }
+                            },
+                            "ACLCommlCyberLiabilityRetention": {
+                                "choiceValue": {
+                                    "code": "75Kusd",
+                                    "name": "7,500"
+                                }
+                            },
+                            "ACLCommlCyberLiabilityWaitingPeriod": {
+                                "choiceValue": {
+                                    "code": "12HR",
+                                    "name": "12 hrs"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+    },
+    {
+        "method": "patch",
+        "uri": "/job/v1/jobs/${jobId}/lines/USCyberLine",
+        "body": {
+            "data": {
+                "attributes": {
+            "aclDateBusinessStarted": "2024-10-07T18:30:00.000Z",
+            "aclPolicyType": {
+                "code": "commercialcyber",
+                "name": "Commercial Cyber"
+            },
+            "aclTotalAssets": "1212121.00",
+            "aclTotalFTEmployees": 20,
+            "aclTotalLiabilities": "12121.00",
+            "aclTotalPTEmployees": 20,
+            "aclTotalPayroll": "40.00",
+            "aclTotalRevenues": "121212.00"
+            }
+         }
+    }
+    },
+    {
+        "method": "post",
+        "uri": "/job/v1/jobs/${jobId}/quote"
+    }
+  ]
+}
