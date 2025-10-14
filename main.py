@@ -2515,13 +2515,13 @@ async def test_simple_guidewire():
     
     results = {}
     
-    # Test 1: Simple ping
+    # Test 1: Simple ping - composite endpoint only accepts POST/PUT/PATCH/DELETE
     try:
         ping_request = {
             "requests": [
                 {
                     "uri": "/rest/common/v1/ping",
-                    "method": "GET"
+                    "method": "POST"  # Changed from GET to POST
                 }
             ]
         }
@@ -2543,7 +2543,7 @@ async def test_simple_guidewire():
         create_request = {
             "requests": [
                 {
-                    "uri": "/rest/account/v1/accounts",
+                    "uri": "/account/v1/accounts",  # Removed /rest prefix
                     "method": "POST",
                     "body": {
                         "data": {
