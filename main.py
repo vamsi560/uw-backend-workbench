@@ -11,7 +11,7 @@ import uuid
 import json
 from pydantic import BaseModel
 from dateutil import parser as date_parser
-from database import get_db, Submission, WorkItem, RiskAssessment, Comment, User, WorkItemHistory, WorkItemStatus, WorkItemPriority, CompanySize, Underwriter, SubmissionMessage, create_tables, SubmissionStatus, SubmissionHistory
+from database import get_db, Submission, WorkItem, RiskAssessment, Comment, User, WorkItemHistory, WorkItemStatus, WorkItemPriority, CompanySize, Underwriter, SubmissionMessage, create_tables, SubmissionStatus, SubmissionHistory, HistoryAction
 from llm_service import llm_service
 from models import (
     EmailIntakePayload, EmailIntakeResponse, LogicAppsEmailPayload,
@@ -597,7 +597,7 @@ async def email_intake(
         # Create history entry for validation results
         history_entry = WorkItemHistory(
             work_item_id=work_item.id,
-            action="created",
+            action=HistoryAction.CREATED,
             performed_by="System",
             performed_by_name="System",
             timestamp=datetime.utcnow(),
@@ -658,7 +658,7 @@ async def email_intake(
                     # Add success to work item history
                     guidewire_history = WorkItemHistory(
                         work_item_id=work_item.id,
-                        action="guidewire_submission_created",
+                        action=HistoryAction.UPDATED,
                         performed_by="System",
             performed_by_name="System",
                         timestamp=datetime.utcnow(),
@@ -681,7 +681,7 @@ async def email_intake(
                     # Add failure to work item history
                     guidewire_history = WorkItemHistory(
                         work_item_id=work_item.id,
-                        action="guidewire_submission_failed",
+                        action=HistoryAction.UPDATED,
                         performed_by="System",
             performed_by_name="System",
                         timestamp=datetime.utcnow(),
@@ -702,7 +702,7 @@ async def email_intake(
                 # Add exception to work item history
                 guidewire_history = WorkItemHistory(
                     work_item_id=work_item.id,
-                    action="guidewire_submission_error",
+                    action=HistoryAction.UPDATED,
                     performed_by="System",
             performed_by_name="System",
                     timestamp=datetime.utcnow(),
@@ -997,7 +997,7 @@ async def logic_apps_email_intake(
         # Create history entry for validation results with safe string handling
         history_entry = WorkItemHistory(
             work_item_id=work_item.id,
-            action="created",
+            action=HistoryAction.CREATED,
             performed_by="System",
             performed_by_name="System",
             timestamp=datetime.utcnow(),
@@ -1056,7 +1056,7 @@ async def logic_apps_email_intake(
                     # Add success to work item history
                     guidewire_history = WorkItemHistory(
                         work_item_id=work_item.id,
-                        action="guidewire_submission_created",
+                        action=HistoryAction.UPDATED,
                         performed_by="System",
             performed_by_name="System",
                         timestamp=datetime.utcnow(),
@@ -1080,7 +1080,7 @@ async def logic_apps_email_intake(
                     # Add failure to work item history
                     guidewire_history = WorkItemHistory(
                         work_item_id=work_item.id,
-                        action="guidewire_submission_failed",
+                        action=HistoryAction.UPDATED,
                         performed_by="System",
             performed_by_name="System",
                         timestamp=datetime.utcnow(),
@@ -1102,7 +1102,7 @@ async def logic_apps_email_intake(
                 # Add exception to work item history
                 guidewire_history = WorkItemHistory(
                     work_item_id=work_item.id,
-                    action="guidewire_submission_error",
+                    action=HistoryAction.UPDATED,
                     performed_by="System",
             performed_by_name="System",
                     timestamp=datetime.utcnow(),
@@ -1700,7 +1700,7 @@ async def submit_work_item_to_guidewire(work_item_id: int, db: Session = Depends
                 # Add history entry
                 history_entry = WorkItemHistory(
                     work_item_id=work_item.id,
-                    action="submitted_to_guidewire",
+                    action=HistoryAction.UPDATED,
                     performed_by="System",
             performed_by_name="System",
                     timestamp=datetime.utcnow(),
@@ -2083,7 +2083,7 @@ async def create_missing_work_items(db: Session = Depends(get_db)):
                 # Create history entry
                 history_entry = WorkItemHistory(
                     work_item_id=work_item.id,
-                    action="created",
+                    action=HistoryAction.CREATED,
                     performed_by="System-Repair",
                     performed_by_name="System-Repair",
                     timestamp=datetime.utcnow(),
