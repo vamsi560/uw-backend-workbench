@@ -2637,7 +2637,7 @@ async def debug_submission_parsing():
         
         # Initialize Guidewire client
         config = BusinessConfig()
-        guidewire_config = config.get_guidewire_config()
+        guidewire_config = config.guidewire_config
         client = GuidewireClient(guidewire_config)
         
         # Test the exact same flow as main integration
