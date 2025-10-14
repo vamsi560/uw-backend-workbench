@@ -1120,52 +1120,7 @@ class GuidewireClient:
             }
         }
     
-    def store_guidewire_response(self, db: Session, work_item_id: int, submission_id: int, 
-                               parsed_data: Dict[str, Any], raw_response: Dict[str, Any]) -> int:
-        """
-        Store Guidewire response in database for UI display and audit
-        """
-        try:
-            from database import GuidewireResponse
-            
-            # Create comprehensive response record
-            response_record = GuidewireResponse(
-                work_item_id=work_item_id,
-                submission_id=submission_id,
-                guidewire_account_id=parsed_data.get("account_id"),
-                account_number=parsed_data.get("account_number"),
-                account_status="Active",
-                organization_name=parsed_data.get("organization_name"),
-                guidewire_job_id=parsed_data.get("job_id"),
-                job_number=parsed_data.get("job_number"),
-                job_status=parsed_data.get("job_status", "Draft"),
-                job_effective_date=datetime.fromisoformat(parsed_data.get("job_effective_date", datetime.utcnow().isoformat().split('T')[0])),
-                policy_number=parsed_data.get("policy_number"),
-                policy_type=parsed_data.get("policy_type", "CyberLiability"),
-                underwriting_company=parsed_data.get("underwriting_company", "PolicyCenter"),
-                coverage_terms=parsed_data.get("coverage_terms", {}),
-                business_data=parsed_data.get("business_data", {}),
-                total_premium_amount=parsed_data.get("total_premium_amount", 0.0),
-                total_cost_amount=parsed_data.get("total_cost_amount", 0.0),
-                total_premium_currency=parsed_data.get("currency", "USD"),
-                submission_success=parsed_data.get("success", False),
-                quote_generated=True,
-                api_links=parsed_data.get("api_links", {}),
-                api_response_raw=raw_response,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
-            )
-            
-            db.add(response_record)
-            db.commit()
-            
-            logger.info(f"Stored Guidewire response for work item {work_item_id}")
-            return response_record.id
-            
-        except Exception as e:
-            logger.error(f"Error storing Guidewire response: {str(e)}")
-            db.rollback()
-            raise
+
 
 # Global instance
 guidewire_client = GuidewireClient()

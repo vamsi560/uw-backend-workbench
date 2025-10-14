@@ -640,17 +640,18 @@ async def email_intake(
                    should_sync=should_sync_to_guidewire,
                    reason="Always sync - no validation conditions")
         
-        # Always attempt Guidewire sync
+        # Always attempt Guidewire sync with CORRECTED FLOW
         if True:  # Always execute
             try:
-                from guidewire_client import guidewire_client
+                # Use the corrected two-step Guidewire client
+                from guidewire_client_fixed import corrected_guidewire_client
                 
-                logger.info("Creating submission in Guidewire", work_item_id=work_item.id, extracted_data_sample=str(extracted_data)[:200])
-                guidewire_result = guidewire_client.create_cyber_submission(extracted_data)
+                logger.info("🔧 CORRECTED FLOW: Creating account and submission in Guidewire PolicyCenter", work_item_id=work_item.id, extracted_data_sample=str(extracted_data)[:200])
+                guidewire_result = corrected_guidewire_client.create_cyber_submission_correct_flow(extracted_data)
                 
                 if guidewire_result.get("success"):
-                    # Store Guidewire response in database
-                    guidewire_response_id = guidewire_client.store_guidewire_response(
+                    # Store Guidewire response in database using corrected client
+                    guidewire_response_id = corrected_guidewire_client.store_guidewire_response(
                         db=db,
                         work_item_id=work_item.id,
                         submission_id=submission.id,
@@ -1081,17 +1082,18 @@ async def logic_apps_email_intake(
                    should_sync=should_sync_to_guidewire,
                    reason="Always sync - no validation conditions")
         
-        # Always attempt Guidewire sync
+        # Always attempt Guidewire sync with CORRECTED FLOW (Logic Apps)
         if True:  # Always execute
             try:
-                from guidewire_client import guidewire_client
+                # Use the corrected two-step Guidewire client for Logic Apps
+                from guidewire_client_fixed import corrected_guidewire_client
                 
-                logger.info("Creating Guidewire submission for Logic Apps intake", work_item_id=work_item.id, extracted_data_sample=str(extracted_data)[:200])
-                guidewire_result = guidewire_client.create_cyber_submission(extracted_data)
+                logger.info("🔧 CORRECTED FLOW (Logic Apps): Creating account and submission in Guidewire PolicyCenter", work_item_id=work_item.id, extracted_data_sample=str(extracted_data)[:200])
+                guidewire_result = corrected_guidewire_client.create_cyber_submission_correct_flow(extracted_data)
                 
                 if guidewire_result.get("success"):
-                    # Store Guidewire response in database
-                    guidewire_response_id = guidewire_client.store_guidewire_response(
+                    # Store Guidewire response in database using corrected client
+                    guidewire_response_id = corrected_guidewire_client.store_guidewire_response(
                         db=db,
                         work_item_id=work_item.id,
                         submission_id=submission.id,
@@ -1758,13 +1760,14 @@ async def submit_work_item_to_guidewire(work_item_id: int, db: Session = Depends
         
         logger.info(f"Submitting work item {work_item_id} to Guidewire with data: {submission_data}")
         
-        # Submit to Guidewire
-        result = guidewire_client.create_cyber_submission(submission_data)
+        # Submit to Guidewire using CORRECTED two-step flow
+        from guidewire_client_fixed import corrected_guidewire_client
+        result = corrected_guidewire_client.create_cyber_submission_correct_flow(submission_data)
         
         if result.get("success"):
-            # Store the Guidewire response data
+            # Store the Guidewire response data using corrected client
             try:
-                guidewire_response_id = guidewire_client.store_guidewire_response(
+                guidewire_response_id = corrected_guidewire_client.store_guidewire_response(
                     db=db,
                     work_item_id=work_item_id,
                     submission_id=work_item.submission_id,
