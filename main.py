@@ -2496,6 +2496,115 @@ async def test_guidewire_connection():
         }
 
 
+@app.get("/api/debug/test-simple-guidewire")
+async def test_simple_guidewire():
+    """Test simple Guidewire requests to debug API issues"""
+    import requests
+    import json
+    
+    composite_url = "https://pc-dev-gwcpdev.valuemom.zeta1-andromeda.guidewire.net/rest/composite/v1/composite"
+    username = "su"
+    password = "gw"
+    
+    session = requests.Session()
+    session.auth = (username, password)
+    session.headers.update({
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    })
+    
+    results = {}
+    
+    # Test 1: Simple ping
+    try:
+        ping_request = {
+            "requests": [
+                {
+                    "uri": "/rest/common/v1/ping",
+                    "method": "GET"
+                }
+            ]
+        }
+        
+        response = session.post(composite_url, json=ping_request, timeout=30)
+        results["ping_test"] = {
+            "status_code": response.status_code,
+            "response": response.text,
+            "success": response.status_code == 200
+        }
+        
+    except Exception as e:
+        results["ping_test"] = {"error": str(e), "success": False}
+    
+    # Test 2: Minimal account creation  
+    try:
+        timestamp = datetime.utcnow().strftime("%H%M%S")
+        
+        create_request = {
+            "requests": [
+                {
+                    "uri": "/rest/account/v1/accounts",
+                    "method": "POST",
+                    "body": {
+                        "data": {
+                            "attributes": {
+                                "initialAccountHolder": {
+                                    "contactSubtype": "Company",
+                                    "companyName": f"Simple Test {timestamp}",
+                                    "primaryAddress": {
+                                        "addressLine1": "123 Test St",
+                                        "city": "San Francisco", 
+                                        "postalCode": "94105",
+                                        "state": {"code": "CA"}
+                                    }
+                                },
+                                "organizationType": {"code": "other"}
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+        
+        response = session.post(composite_url, json=create_request, timeout=30)
+        results["account_creation"] = {
+            "status_code": response.status_code,
+            "response": response.text,
+            "success": response.status_code == 200
+        }
+        
+        # Check if real account was created
+        if response.status_code == 200:
+            try:
+                data = response.json()
+                if 'responses' in data and len(data['responses']) > 0:
+                    account_resp = data['responses'][0]
+                    if 'body' in account_resp and 'data' in account_resp['body']:
+                        account_attrs = account_resp['body']['data']['attributes']
+                        results["real_account_created"] = {
+                            "account_id": account_attrs.get('id'),
+                            "account_number": account_attrs.get('accountNumber'),
+                            "success": True
+                        }
+                    else:
+                        results["real_account_created"] = {"success": False, "reason": "No account data in response"}
+                else:
+                    results["real_account_created"] = {"success": False, "reason": "No responses in data"}
+            except Exception as e:
+                results["real_account_created"] = {"success": False, "error": str(e)}
+        
+    except Exception as e:
+        results["account_creation"] = {"error": str(e), "success": False}
+    
+    return {
+        "test_type": "SIMPLE_DIRECT_API",
+        "endpoint": composite_url,
+        "authentication": f"{username}/***",
+        "results": results,
+        "timestamp": datetime.utcnow().isoformat() + "Z"
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
