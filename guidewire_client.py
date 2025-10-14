@@ -24,11 +24,12 @@ class GuidewireConfig:
     username: str = "su"
     password: str = "gw"
     bearer_token: str = ""
-    timeout: int = 30
+    timeout: int = 60  # Increased timeout for composite operations
     token_buffer: int = 300
     
     @property
     def full_url(self) -> str:
+        """Direct composite API endpoint provided by Guidewire team"""
         return f"{self.base_url}{self.composite_endpoint}"
     
     @property
@@ -269,7 +270,8 @@ class GuidewireClient:
     
     def create_cyber_submission(self, submission_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Create a complete cyber insurance submission using the composite endpoint
+        Create a complete cyber insurance submission using the direct composite endpoint
+        Uses the official endpoint: https://pc-dev-gwcpdev.valuemom.zeta1-andromeda.guidewire.net/rest/composite/v1/composite
         
         Args:
             submission_data: Extracted data from our work item
@@ -278,30 +280,41 @@ class GuidewireClient:
             Dictionary with submission results including account ID, job ID, and quote
         """
         try:
-            logger.info("Creating cyber submission in Guidewire PolicyCenter")
+            logger.info("Creating cyber submission using direct Guidewire composite API")
             
-            # Test authentication first
-            if not self.authenticate():
-                logger.warning("Guidewire authentication failed, using simulation mode")
-                return self._simulate_guidewire_response(submission_data)
+            # Use HTTP Basic Auth directly without pre-authentication check
+            # This follows the Guidewire team's recommendation to use the direct endpoint
+            self.session.auth = (self.config.username, self.config.password)
             
-            # Map our data to Guidewire format
+            # Map our data to Guidewire format for the composite request
             guidewire_payload = self._map_to_guidewire_format(submission_data)
             
-            # Submit to Guidewire
+            logger.info(f"Submitting to direct API endpoint: {self.config.full_url}")
+            logger.debug(f"Payload preview: {json.dumps(guidewire_payload, indent=2)[:500]}...")
+            
+            # Submit directly to the composite endpoint
             response = self.submit_composite_request(guidewire_payload)
             
             if response["success"]:
                 # Extract key IDs and information from response
                 result = self._extract_submission_results(response)
-                logger.info(f"Guidewire submission created successfully: {result.get('job_number', 'N/A')}")
+                logger.info(f"✅ Guidewire submission created successfully!")
+                logger.info(f"   Job Number: {result.get('job_number', 'N/A')}")
+                logger.info(f"   Account ID: {result.get('account_id', 'N/A')}")
                 return result
             else:
-                logger.error(f"Guidewire submission failed: {response.get('error', 'Unknown error')}")
+                logger.error(f"❌ Guidewire submission failed: {response.get('error', 'Unknown error')}")
+                logger.error(f"   Status Code: {response.get('status_code', 'N/A')}")
+                logger.error(f"   Response: {str(response.get('data', ''))[:200]}...")
+                
+                # For now, continue with simulation if direct API fails
+                # The Guidewire team can help us debug the specific API issues
+                logger.warning("Falling back to simulation mode while debugging direct API")
                 return self._simulate_guidewire_response(submission_data)
                 
         except Exception as e:
-            logger.error(f"Error creating Guidewire submission: {str(e)}")
+            logger.error(f"Error with direct Guidewire API: {str(e)}")
+            logger.warning("Falling back to simulation mode")
             return self._simulate_guidewire_response(submission_data)
     
     def _map_to_guidewire_format(self, submission_data: Dict[str, Any]) -> Dict[str, Any]:

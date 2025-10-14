@@ -2431,54 +2431,67 @@ async def broadcast_new_workitem(work_item: WorkItem, submission: Submission, bu
 
 @app.get("/api/debug/test-guidewire-connection")
 async def test_guidewire_connection():
-    """Test Guidewire connection with real credentials"""
+    """Test direct Guidewire composite API endpoint as recommended by Guidewire team"""
     try:
         from guidewire_client import guidewire_client
         
-        logger.info("Testing Guidewire connection")
+        logger.info("Testing direct Guidewire composite API")
         
-        # Test authentication
-        auth_result = guidewire_client.authenticate()
+        # Test connection to base URL
+        connection_test = guidewire_client.test_connection()
         
-        if auth_result:
-            # Test a sample submission
-            sample_data = {
-                "company_name": "Test Insurance Company Inc",
-                "contact_email": "test@company.com", 
-                "contact_first_name": "Test",
-                "contact_last_name": "User",
-                "industry": "technology",
-                "employees": 25,
-                "annual_revenue": 1500000,
-                "coverage_amount": 1000000,
-                "business_description": "Technology consulting company"
-            }
-            
-            logger.info("Creating test submission in Guidewire")
-            result = guidewire_client.create_cyber_submission(sample_data)
-            
-            return {
-                "guidewire_connection": "SUCCESS",
-                "authentication": "PASSED",
-                "submission_test": "COMPLETED",
-                "result": result,
-                "timestamp": datetime.utcnow().isoformat() + "Z"
-            }
-        else:
-            return {
-                "guidewire_connection": "FAILED",
-                "authentication": "FAILED", 
-                "error": "Could not authenticate with Guidewire PolicyCenter",
-                "credentials_configured": True,
+        # Test a sample submission using the direct composite endpoint
+        sample_data = {
+            "company_name": "Direct API Test Company Inc",
+            "contact_email": "directapi@testcompany.com", 
+            "contact_first_name": "Direct",
+            "contact_last_name": "API",
+            "industry": "technology",
+            "employees": 30,
+            "annual_revenue": 2000000,
+            "coverage_amount": 1000000,
+            "business_description": "Direct API test using composite endpoint",
+            "business_state": "CA",
+            "mailing_city": "San Francisco", 
+            "mailing_zip": "94105"
+        }
+        
+        logger.info("Testing submission creation via direct composite API")
+        result = guidewire_client.create_cyber_submission(sample_data)
+        
+        return {
+            "test_type": "DIRECT_COMPOSITE_API",
+            "guidewire_endpoint": guidewire_client.config.full_url,
+            "connection_test": connection_test,
+            "submission_test": {
+                "status": "COMPLETED",
+                "success": result.get("success", False),
+                "simulation_mode": result.get("simulation_mode", False),
+                "account_id": result.get("account_id"),
+                "account_number": result.get("account_number"), 
+                "job_id": result.get("job_id"),
+                "job_number": result.get("job_number"),
+                "message": result.get("message"),
+                "error": result.get("error")
+            },
+            "api_details": {
                 "base_url": guidewire_client.config.base_url,
-                "timestamp": datetime.utcnow().isoformat() + "Z"
-            }
+                "username": guidewire_client.config.username,
+                "timeout": guidewire_client.config.timeout,
+                "direct_endpoint": guidewire_client.config.full_url
+            },
+            "guidewire_team_recommendation": "Using direct composite endpoint",
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        }
             
     except Exception as e:
-        logger.error(f"Guidewire connection test failed: {str(e)}")
+        logger.error(f"Direct Guidewire API test failed: {str(e)}")
         return {
-            "guidewire_connection": "ERROR",
+            "test_type": "DIRECT_COMPOSITE_API", 
+            "status": "ERROR",
             "error": str(e),
+            "message": "Direct composite API test failed",
+            "endpoint": "https://pc-dev-gwcpdev.valuemom.zeta1-andromeda.guidewire.net/rest/composite/v1/composite",
             "timestamp": datetime.utcnow().isoformat() + "Z"
         }
 
