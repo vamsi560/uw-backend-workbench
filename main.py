@@ -598,7 +598,8 @@ async def email_intake(
         history_entry = WorkItemHistory(
             work_item_id=work_item.id,
             action="created",
-            changed_by="System",
+            performed_by="System",
+            performed_by_name="System",
             timestamp=datetime.utcnow(),
             details={
                 "validation_status": validation_status,
@@ -658,7 +659,8 @@ async def email_intake(
                     guidewire_history = WorkItemHistory(
                         work_item_id=work_item.id,
                         action="guidewire_submission_created",
-                        changed_by="System",
+                        performed_by="System",
+            performed_by_name="System",
                         timestamp=datetime.utcnow(),
                         details={
                             "guidewire_account_id": guidewire_result.get("account_id"),
@@ -680,7 +682,8 @@ async def email_intake(
                     guidewire_history = WorkItemHistory(
                         work_item_id=work_item.id,
                         action="guidewire_submission_failed",
-                        changed_by="System",
+                        performed_by="System",
+            performed_by_name="System",
                         timestamp=datetime.utcnow(),
                         details={
                             "error": guidewire_result.get("error"),
@@ -700,7 +703,8 @@ async def email_intake(
                 guidewire_history = WorkItemHistory(
                     work_item_id=work_item.id,
                     action="guidewire_submission_error",
-                    changed_by="System",
+                    performed_by="System",
+            performed_by_name="System",
                     timestamp=datetime.utcnow(),
                     details={
                         "error": "Exception during submission creation",
@@ -994,7 +998,8 @@ async def logic_apps_email_intake(
         history_entry = WorkItemHistory(
             work_item_id=work_item.id,
             action="created",
-            changed_by="System",
+            performed_by="System",
+            performed_by_name="System",
             timestamp=datetime.utcnow(),
             details={
                 "validation_status": str(validation_status) if validation_status else "Unknown",
@@ -1052,7 +1057,8 @@ async def logic_apps_email_intake(
                     guidewire_history = WorkItemHistory(
                         work_item_id=work_item.id,
                         action="guidewire_submission_created",
-                        changed_by="System",
+                        performed_by="System",
+            performed_by_name="System",
                         timestamp=datetime.utcnow(),
                         details={
                             "guidewire_account_id": guidewire_result.get("account_id"),
@@ -1075,7 +1081,8 @@ async def logic_apps_email_intake(
                     guidewire_history = WorkItemHistory(
                         work_item_id=work_item.id,
                         action="guidewire_submission_failed",
-                        changed_by="System",
+                        performed_by="System",
+            performed_by_name="System",
                         timestamp=datetime.utcnow(),
                         details={
                             "error": guidewire_result.get("error"),
@@ -1096,7 +1103,8 @@ async def logic_apps_email_intake(
                 guidewire_history = WorkItemHistory(
                     work_item_id=work_item.id,
                     action="guidewire_submission_error",
-                    changed_by="System",
+                    performed_by="System",
+            performed_by_name="System",
                     timestamp=datetime.utcnow(),
                     details={
                         "error": "Exception during submission creation",
@@ -1418,7 +1426,8 @@ async def update_work_item_status(
         history_entry = WorkItemHistory(
             work_item_id=work_item.id,
             action=f"status_changed_from_{old_status}_to_{new_status}",
-            changed_by=changed_by,
+            performed_by=changed_by,
+            performed_by_name=changed_by,
             timestamp=datetime.utcnow(),
             details={
                 "old_status": old_status,
@@ -1692,7 +1701,8 @@ async def submit_work_item_to_guidewire(work_item_id: int, db: Session = Depends
                 history_entry = WorkItemHistory(
                     work_item_id=work_item.id,
                     action="submitted_to_guidewire",
-                    changed_by="System",
+                    performed_by="System",
+            performed_by_name="System",
                     timestamp=datetime.utcnow(),
                     details={
                         "guidewire_account_id": result.get("account_id"),
@@ -2074,7 +2084,8 @@ async def create_missing_work_items(db: Session = Depends(get_db)):
                 history_entry = WorkItemHistory(
                     work_item_id=work_item.id,
                     action="created",
-                    changed_by="System-Repair",
+                    performed_by="System-Repair",
+                    performed_by_name="System-Repair",
                     timestamp=datetime.utcnow(),
                     details={
                         "repair_action": "Created missing work item for orphaned submission",
