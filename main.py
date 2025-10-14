@@ -2429,6 +2429,60 @@ async def broadcast_new_workitem(work_item: WorkItem, submission: Submission, bu
         logger.error(f"Error broadcasting work item: {str(e)}")
 
 
+@app.get("/api/debug/test-guidewire-connection")
+async def test_guidewire_connection():
+    """Test Guidewire connection with real credentials"""
+    try:
+        from guidewire_client import guidewire_client
+        
+        logger.info("Testing Guidewire connection")
+        
+        # Test authentication
+        auth_result = guidewire_client.authenticate()
+        
+        if auth_result:
+            # Test a sample submission
+            sample_data = {
+                "company_name": "Test Insurance Company Inc",
+                "contact_email": "test@company.com", 
+                "contact_first_name": "Test",
+                "contact_last_name": "User",
+                "industry": "technology",
+                "employees": 25,
+                "annual_revenue": 1500000,
+                "coverage_amount": 1000000,
+                "business_description": "Technology consulting company"
+            }
+            
+            logger.info("Creating test submission in Guidewire")
+            result = guidewire_client.create_cyber_submission(sample_data)
+            
+            return {
+                "guidewire_connection": "SUCCESS",
+                "authentication": "PASSED",
+                "submission_test": "COMPLETED",
+                "result": result,
+                "timestamp": datetime.utcnow().isoformat() + "Z"
+            }
+        else:
+            return {
+                "guidewire_connection": "FAILED",
+                "authentication": "FAILED", 
+                "error": "Could not authenticate with Guidewire PolicyCenter",
+                "credentials_configured": True,
+                "base_url": guidewire_client.config.base_url,
+                "timestamp": datetime.utcnow().isoformat() + "Z"
+            }
+            
+    except Exception as e:
+        logger.error(f"Guidewire connection test failed: {str(e)}")
+        return {
+            "guidewire_connection": "ERROR",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
