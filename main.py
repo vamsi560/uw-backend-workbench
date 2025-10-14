@@ -123,6 +123,22 @@ try:
 except Exception as e:
     logger.error(f"Failed to load system dashboard APIs: {str(e)}")
 
+# Include Guidewire sync service APIs
+try:
+    from guidewire_sync_service import sync_router
+    app.include_router(sync_router)
+    logger.info("Guidewire sync service APIs loaded")
+except Exception as e:
+    logger.error(f"Failed to load Guidewire sync service APIs: {str(e)}")
+
+# Include quote management APIs
+try:
+    from quote_management import quote_router
+    app.include_router(quote_router)
+    logger.info("Quote management APIs loaded")
+except Exception as e:
+    logger.error(f"Failed to load quote management APIs: {str(e)}")
+
 # Test endpoint to verify deployment
 @app.get("/api/test/deployment")
 async def test_deployment():
@@ -163,6 +179,14 @@ async def test_deployment():
             "system_dashboard": {
                 "count": len(dashboard_routes),
                 "routes": dashboard_routes[:5]
+            },
+            "sync_service": {
+                "count": len([r for r in routes if '/api/guidewire-sync' in r]),
+                "routes": [r for r in routes if '/api/guidewire-sync' in r][:5]
+            },
+            "quote_management": {
+                "count": len([r for r in routes if '/api/quotes' in r]),
+                "routes": [r for r in routes if '/api/quotes' in r][:5]
             }
         },
         "features_loaded": {
@@ -171,7 +195,9 @@ async def test_deployment():
             "risk_assessment": len(risk_routes) > 0,
             "document_management": len(document_routes) > 0,
             "user_management": len(user_routes) > 0,
-            "system_dashboard": len(dashboard_routes) > 0
+            "system_dashboard": len(dashboard_routes) > 0,
+            "sync_service": len([r for r in routes if '/api/guidewire-sync' in r]) > 0,
+            "quote_management": len([r for r in routes if '/api/quotes' in r]) > 0
         }
     }
 
@@ -300,36 +326,37 @@ def get_workitems(
     since: datetime = None,
     db: Session = Depends(get_db)
 ):
-    query = db.query(Submission)
+    # Query WorkItem table with joined Submission data
+    query = db.query(WorkItem).join(Submission, WorkItem.submission_id == Submission.id)
 
     if since_id is not None:
-        query = query.filter(Submission.id > since_id)
+        query = query.filter(WorkItem.id > since_id)
     elif since is not None:
-        query = query.filter(Submission.created_at > since)
+        query = query.filter(WorkItem.created_at > since)
     else:
         # No filters, return 20 most recent
-        query = query.order_by(Submission.created_at.desc()).limit(20)
+        query = query.order_by(WorkItem.created_at.desc()).limit(20)
 
     # Always order by created_at ASC for output
-    results = query.order_by(Submission.created_at.asc()).all()
+    results = query.order_by(WorkItem.created_at.asc()).all()
 
     # Remove duplicates by id (shouldn't be needed if id is PK, but for safety)
     seen = set()
-    unique_submissions = []
-    for sub in results:
-        if sub.id not in seen:
-            seen.add(sub.id)
-            unique_submissions.append(sub)
+    unique_workitems = []
+    for wi in results:
+        if wi.id not in seen:
+            seen.add(wi.id)
+            unique_workitems.append(wi)
 
     return [
         SubmissionOut(
-            id=sub.id,
-            subject=sub.subject,
-            from_email=getattr(sub, "from_email", None),
-            created_at=sub.created_at,
-            status=sub.status
+            id=wi.id,
+            subject=wi.submission.subject,
+            from_email=getattr(wi.submission, "from_email", None) or wi.submission.sender_email,
+            created_at=wi.created_at,
+            status=wi.status.value if wi.status else "pending"
         )
-        for sub in unique_submissions
+        for wi in unique_workitems
     ]
 
 # Create database tables on startup
@@ -594,11 +621,106 @@ async def email_intake(
                    validation_status=validation_status,
                    risk_priority=risk_priority)
         
+        # Create submission in Guidewire if validation is complete or incomplete (not rejected)
+        guidewire_success = False
+        if validation_status in ["Complete", "Incomplete"] and extracted_data:
+            try:
+                from guidewire_client import guidewire_client
+                
+                logger.info("Creating submission in Guidewire", work_item_id=work_item.id)
+                guidewire_result = guidewire_client.create_cyber_submission(extracted_data)
+                
+                if guidewire_result.get("success"):
+                    # Store Guidewire response in database
+                    guidewire_response_id = guidewire_client.store_guidewire_response(
+                        db=db,
+                        work_item_id=work_item.id,
+                        submission_id=submission.id,
+                        parsed_data=guidewire_result.get("parsed_data", {}),
+                        raw_response=guidewire_result.get("raw_response", {})
+                    )
+                    
+                    # Update work item with Guidewire IDs
+                    if guidewire_result.get("account_id"):
+                        work_item.guidewire_account_id = guidewire_result["account_id"]
+                    if guidewire_result.get("job_id"):
+                        work_item.guidewire_job_id = guidewire_result["job_id"]
+                    
+                    db.commit()
+                    guidewire_success = True
+                    
+                    logger.info("Guidewire submission created successfully",
+                              work_item_id=work_item.id,
+                              account_id=guidewire_result.get("account_id"),
+                              job_id=guidewire_result.get("job_id"),
+                              job_number=guidewire_result.get("job_number"))
+                    
+                    # Add success to work item history
+                    guidewire_history = WorkItemHistory(
+                        work_item_id=work_item.id,
+                        action="guidewire_submission_created",
+                        changed_by="System",
+                        timestamp=datetime.utcnow(),
+                        details={
+                            "guidewire_account_id": guidewire_result.get("account_id"),
+                            "guidewire_job_id": guidewire_result.get("job_id"),
+                            "job_number": guidewire_result.get("job_number"),
+                            "account_number": guidewire_result.get("account_number")
+                        }
+                    )
+                    db.add(guidewire_history)
+                    db.commit()
+                
+                else:
+                    logger.error("Failed to create Guidewire submission",
+                               work_item_id=work_item.id,
+                               error=guidewire_result.get("error"),
+                               message=guidewire_result.get("message"))
+                    
+                    # Add failure to work item history
+                    guidewire_history = WorkItemHistory(
+                        work_item_id=work_item.id,
+                        action="guidewire_submission_failed",
+                        changed_by="System",
+                        timestamp=datetime.utcnow(),
+                        details={
+                            "error": guidewire_result.get("error"),
+                            "message": guidewire_result.get("message")
+                        }
+                    )
+                    db.add(guidewire_history)
+                    db.commit()
+                    
+            except Exception as gw_error:
+                logger.error("Exception during Guidewire submission creation",
+                           work_item_id=work_item.id,
+                           error=str(gw_error),
+                           exc_info=True)
+                
+                # Add exception to work item history
+                guidewire_history = WorkItemHistory(
+                    work_item_id=work_item.id,
+                    action="guidewire_submission_error",
+                    changed_by="System",
+                    timestamp=datetime.utcnow(),
+                    details={
+                        "error": "Exception during submission creation",
+                        "message": str(gw_error)
+                    }
+                )
+                db.add(guidewire_history)
+                db.commit()
+        else:
+            logger.info("Skipping Guidewire submission creation - rejected or insufficient data",
+                       validation_status=validation_status,
+                       has_extracted_data=bool(extracted_data))
+        
         # Broadcast new work item to all connected WebSocket clients with enhanced data
         await broadcast_new_workitem(work_item, submission, {
             "validation_status": validation_status,
             "risk_score": overall_risk_score,
-            "assigned_underwriter": assigned_underwriter
+            "assigned_underwriter": assigned_underwriter,
+            "guidewire_success": guidewire_success
         })
         
         return EmailIntakeResponse(
@@ -894,11 +1016,108 @@ async def logic_apps_email_intake(
                    work_item_id=work_item.id,
                    submission_ref=submission_ref)
         
+        # Create submission in Guidewire if validation is complete or incomplete (not rejected)
+        guidewire_success = False
+        if validation_status in ["Complete", "Incomplete"] and extracted_data:
+            try:
+                from guidewire_client import guidewire_client
+                
+                logger.info("Creating Guidewire submission for Logic Apps intake", work_item_id=work_item.id)
+                guidewire_result = guidewire_client.create_cyber_submission(extracted_data)
+                
+                if guidewire_result.get("success"):
+                    # Store Guidewire response in database
+                    guidewire_response_id = guidewire_client.store_guidewire_response(
+                        db=db,
+                        work_item_id=work_item.id,
+                        submission_id=submission.id,
+                        parsed_data=guidewire_result.get("parsed_data", {}),
+                        raw_response=guidewire_result.get("raw_response", {})
+                    )
+                    
+                    # Update work item with Guidewire IDs
+                    if guidewire_result.get("account_id"):
+                        work_item.guidewire_account_id = guidewire_result["account_id"]
+                    if guidewire_result.get("job_id"):
+                        work_item.guidewire_job_id = guidewire_result["job_id"]
+                    
+                    db.commit()
+                    guidewire_success = True
+                    
+                    logger.info("Guidewire submission created successfully from Logic Apps",
+                              work_item_id=work_item.id,
+                              account_id=guidewire_result.get("account_id"),
+                              job_id=guidewire_result.get("job_id"),
+                              job_number=guidewire_result.get("job_number"))
+                    
+                    # Add success to work item history
+                    guidewire_history = WorkItemHistory(
+                        work_item_id=work_item.id,
+                        action="guidewire_submission_created",
+                        changed_by="System",
+                        timestamp=datetime.utcnow(),
+                        details={
+                            "guidewire_account_id": guidewire_result.get("account_id"),
+                            "guidewire_job_id": guidewire_result.get("job_id"),
+                            "job_number": guidewire_result.get("job_number"),
+                            "account_number": guidewire_result.get("account_number"),
+                            "source": "logic_apps"
+                        }
+                    )
+                    db.add(guidewire_history)
+                    db.commit()
+                
+                else:
+                    logger.error("Failed to create Guidewire submission from Logic Apps",
+                               work_item_id=work_item.id,
+                               error=guidewire_result.get("error"),
+                               message=guidewire_result.get("message"))
+                    
+                    # Add failure to work item history
+                    guidewire_history = WorkItemHistory(
+                        work_item_id=work_item.id,
+                        action="guidewire_submission_failed",
+                        changed_by="System",
+                        timestamp=datetime.utcnow(),
+                        details={
+                            "error": guidewire_result.get("error"),
+                            "message": guidewire_result.get("message"),
+                            "source": "logic_apps"
+                        }
+                    )
+                    db.add(guidewire_history)
+                    db.commit()
+                    
+            except Exception as gw_error:
+                logger.error("Exception during Guidewire submission creation from Logic Apps",
+                           work_item_id=work_item.id,
+                           error=str(gw_error),
+                           exc_info=True)
+                
+                # Add exception to work item history
+                guidewire_history = WorkItemHistory(
+                    work_item_id=work_item.id,
+                    action="guidewire_submission_error",
+                    changed_by="System",
+                    timestamp=datetime.utcnow(),
+                    details={
+                        "error": "Exception during submission creation",
+                        "message": str(gw_error),
+                        "source": "logic_apps"
+                    }
+                )
+                db.add(guidewire_history)
+                db.commit()
+        else:
+            logger.info("Skipping Guidewire submission creation from Logic Apps - rejected or insufficient data",
+                       validation_status=validation_status,
+                       has_extracted_data=bool(extracted_data))
+        
         return EmailIntakeResponse(
             submission_ref=str(submission_ref),
             submission_id=submission.submission_id,
             status="success",
-            message="Logic Apps email processed successfully and submission created"
+            message=f"Logic Apps email processed successfully and submission created. Guidewire: {'Success' if guidewire_success else 'Skipped/Failed'}"
         )
         
     except Exception as e:
@@ -1085,8 +1304,12 @@ async def debug_database(db: Session = Depends(get_db)):
         work_item_count = db.query(WorkItem).count()
         submission_count = db.query(Submission).count()
         
-        # Get latest work item
+        # Get latest work item and submission
         latest_work_item = db.query(WorkItem).order_by(WorkItem.created_at.desc()).first()
+        latest_submission = db.query(Submission).order_by(Submission.created_at.desc()).first()
+        
+        # Get recent work items (last 5)
+        recent_work_items = db.query(WorkItem).order_by(WorkItem.created_at.desc()).limit(5).all()
         
         return {
             "database_status": "connected",
@@ -1095,8 +1318,26 @@ async def debug_database(db: Session = Depends(get_db)):
             "latest_work_item": {
                 "id": latest_work_item.id if latest_work_item else None,
                 "created_at": latest_work_item.created_at.isoformat() if latest_work_item else None,
-                "title": latest_work_item.title if latest_work_item else None
+                "title": latest_work_item.title if latest_work_item else None,
+                "status": latest_work_item.status.value if latest_work_item and latest_work_item.status else None,
+                "submission_id": latest_work_item.submission_id if latest_work_item else None
             } if latest_work_item else None,
+            "latest_submission": {
+                "id": latest_submission.id if latest_submission else None,
+                "created_at": latest_submission.created_at.isoformat() if latest_submission else None,
+                "subject": latest_submission.subject if latest_submission else None,
+                "sender_email": latest_submission.sender_email if latest_submission else None
+            } if latest_submission else None,
+            "recent_work_items": [
+                {
+                    "id": wi.id,
+                    "title": wi.title,
+                    "status": wi.status.value if wi.status else None,
+                    "created_at": wi.created_at.isoformat(),
+                    "submission_id": wi.submission_id
+                }
+                for wi in recent_work_items
+            ],
             "database_url_host": settings.database_url.split('@')[1].split('/')[0] if '@' in settings.database_url else "hidden"
         }
     except Exception as e:
@@ -1104,6 +1345,43 @@ async def debug_database(db: Session = Depends(get_db)):
             "database_status": "error",
             "error": str(e),
             "database_url_host": settings.database_url.split('@')[1].split('/')[0] if '@' in settings.database_url else "hidden"
+        }
+
+@app.get("/api/debug/poll")
+async def debug_poll(db: Session = Depends(get_db)):
+    """Debug version of work items poll to see what data is returned"""
+    try:
+        # Replicate the exact polling logic
+        query = db.query(WorkItem, Submission).join(
+            Submission, WorkItem.submission_id == Submission.id
+        ).order_by(WorkItem.created_at.desc())
+        
+        results = query.limit(20).all()
+        
+        debug_data = []
+        for work_item, submission in results:
+            debug_data.append({
+                "work_item_id": work_item.id,
+                "submission_id": work_item.submission_id,
+                "submission_ref": str(submission.submission_ref),
+                "title": work_item.title or submission.subject,
+                "status": work_item.status.value if work_item.status else "Unknown",
+                "created_at": work_item.created_at.isoformat(),
+                "assigned_to": work_item.assigned_to,
+                "raw_status": work_item.status,
+                "has_submission": submission is not None,
+                "submission_subject": submission.subject if submission else None
+            })
+        
+        return {
+            "total_found": len(debug_data),
+            "work_items": debug_data,
+            "query_executed": "WorkItem JOIN Submission ORDER BY created_at DESC LIMIT 20"
+        }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "error_type": type(e).__name__
         }
 
 
@@ -1696,7 +1974,147 @@ async def poll_workitems(
         )
 
 
+@app.get("/api/debug/orphaned-submissions")
+async def debug_orphaned_submissions(db: Session = Depends(get_db)):
+    """Check for submissions that don't have corresponding work items"""
+    try:
+        # Find submissions that don't have work items
+        orphaned_submissions = db.query(Submission).filter(
+            ~Submission.id.in_(
+                db.query(WorkItem.submission_id).subquery()
+            )
+        ).order_by(Submission.created_at.desc()).all()
+        
+        orphaned_data = []
+        for submission in orphaned_submissions:
+            orphaned_data.append({
+                "submission_id": submission.submission_id,
+                "id": submission.id,
+                "subject": submission.subject,
+                "sender_email": submission.sender_email,
+                "created_at": submission.created_at.isoformat(),
+                "task_status": submission.task_status,
+                "extracted_fields": submission.extracted_fields
+            })
+        
+        return {
+            "orphaned_count": len(orphaned_data),
+            "orphaned_submissions": orphaned_data,
+            "total_submissions": db.query(Submission).count(),
+            "total_work_items": db.query(WorkItem).count()
+        }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "error_type": type(e).__name__
+        }
 
+
+@app.post("/api/debug/create-missing-work-items")
+async def create_missing_work_items(db: Session = Depends(get_db)):
+    """Create work items for submissions that don't have them"""
+    try:
+        # Find submissions that don't have work items
+        orphaned_submissions = db.query(Submission).filter(
+            ~Submission.id.in_(
+                db.query(WorkItem.submission_id).subquery()
+            )
+        ).all()
+        
+        created_work_items = []
+        errors = []
+        
+        for submission in orphaned_submissions:
+            try:
+                # Create work item for this submission
+                work_item = WorkItem(
+                    submission_id=submission.id,
+                    title=submission.subject or "Email Submission",
+                    description=f"Email from {submission.sender_email}",
+                    status=WorkItemStatus.PENDING,
+                    priority=WorkItemPriority.MEDIUM,
+                    assigned_to=None
+                )
+                
+                # Try to apply extracted data if available
+                if submission.extracted_fields:
+                    extracted_data = submission.extracted_fields
+                    if isinstance(extracted_data, dict):
+                        # Set basic fields
+                        work_item.industry = extracted_data.get('industry')
+                        work_item.policy_type = extracted_data.get('policy_type') or extracted_data.get('coverage_type')
+                        
+                        # Parse coverage amount
+                        coverage_raw = extracted_data.get('coverage_amount') or extracted_data.get('policy_limit')
+                        if coverage_raw:
+                            try:
+                                # Remove currency symbols and parse
+                                coverage_clean = str(coverage_raw).replace('$', '').replace(',', '')
+                                work_item.coverage_amount = float(coverage_clean)
+                            except:
+                                pass
+                        
+                        # Set company size if available
+                        company_size = extracted_data.get('company_size')
+                        if company_size:
+                            try:
+                                work_item.company_size = CompanySize(company_size)
+                            except ValueError:
+                                # Try mapping common variations
+                                size_mapping = {
+                                    'small': CompanySize.SMALL,
+                                    'medium': CompanySize.MEDIUM,
+                                    'large': CompanySize.LARGE,
+                                    'enterprise': CompanySize.ENTERPRISE
+                                }
+                                work_item.company_size = size_mapping.get(str(company_size).lower())
+                
+                db.add(work_item)
+                db.flush()  # Get ID
+                
+                # Create history entry
+                history_entry = WorkItemHistory(
+                    work_item_id=work_item.id,
+                    action="created",
+                    changed_by="System-Repair",
+                    timestamp=datetime.utcnow(),
+                    details={
+                        "repair_action": "Created missing work item for orphaned submission",
+                        "submission_ref": submission.submission_ref
+                    }
+                )
+                db.add(history_entry)
+                
+                created_work_items.append({
+                    "work_item_id": work_item.id,
+                    "submission_id": submission.id,
+                    "submission_ref": submission.submission_ref,
+                    "title": work_item.title
+                })
+                
+            except Exception as e:
+                errors.append({
+                    "submission_id": submission.id,
+                    "submission_ref": submission.submission_ref,
+                    "error": str(e)
+                })
+        
+        if created_work_items:
+            db.commit()
+        
+        return {
+            "created_count": len(created_work_items),
+            "error_count": len(errors),
+            "created_work_items": created_work_items,
+            "errors": errors
+        }
+        
+    except Exception as e:
+        db.rollback()
+        return {
+            "error": str(e),
+            "error_type": type(e).__name__
+        }
 
 
 # ===== Frontend Integration API Endpoints =====

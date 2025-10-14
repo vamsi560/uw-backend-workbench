@@ -130,6 +130,10 @@ class WorkItem(Base):
     coverage_amount = Column(Float, nullable=True)
     last_risk_assessment = Column(DateTime, nullable=True)
     
+    # Guidewire integration fields
+    guidewire_account_id = Column(String(100), nullable=True)  # Guidewire account ID
+    guidewire_job_id = Column(String(100), nullable=True)      # Guidewire job/submission ID
+    
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
