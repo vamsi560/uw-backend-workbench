@@ -587,11 +587,10 @@ async def email_intake(
         if risk_categories and overall_risk_score > 0:
             risk_assessment = RiskAssessment(
                 work_item_id=work_item.id,
-                overall_score=overall_risk_score,
+                overall_risk_score=overall_risk_score,
                 risk_categories=risk_categories,
-                assessment_date=datetime.utcnow(),
                 assessed_by="System",
-                assessment_notes=f"Initial automated assessment based on submission data. Validation status: {validation_status}"
+                assessed_by_name="System"
             )
             db.add(risk_assessment)
         
@@ -984,11 +983,10 @@ async def logic_apps_email_intake(
         if risk_categories and overall_risk_score > 0:
             risk_assessment = RiskAssessment(
                 work_item_id=work_item.id,
-                overall_score=float(overall_risk_score),
+                overall_risk_score=float(overall_risk_score),
                 risk_categories=risk_categories,
-                assessment_date=datetime.utcnow(),
                 assessed_by="System",
-                assessment_notes=f"Initial automated assessment based on Logic Apps submission data. Validation status: {str(validation_status)}"
+                assessed_by_name="System"
             )
             db.add(risk_assessment)
         
