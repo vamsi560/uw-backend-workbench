@@ -602,9 +602,12 @@ class GuidewireClient:
         except:
             ft_employees = 20
         
-        # Parse revenue
+        # Parse revenue - handle both string and numeric inputs
         try:
-            revenue = float(str(submission_data.get("annual_revenue", "121212")).replace("$", "").replace(",", ""))
+            revenue_value = submission_data.get("annual_revenue", "121212")
+            # Convert to string first to handle both string and numeric inputs
+            revenue_str = str(revenue_value).replace("$", "").replace(",", "")
+            revenue = float(revenue_str)
         except:
             revenue = 121212.0
         
@@ -1035,8 +1038,8 @@ class GuidewireClient:
             "policy_number": f"POL{timestamp}",
             "policy_type": "CyberLiability",
             "underwriting_company": "Simulated Insurance Co",
-            "total_premium_amount": data.get("coverage_amount", 1000000) * 0.00125,  # 0.125% rate
-            "total_cost_amount": data.get("coverage_amount", 1000000) * 0.0015,      # 0.15% total cost
+            "total_premium_amount": float(str(data.get("coverage_amount", 1000000)).replace("$", "").replace(",", "")) * 0.00125,  # 0.125% rate
+            "total_cost_amount": float(str(data.get("coverage_amount", 1000000)).replace("$", "").replace(",", "")) * 0.0015,      # 0.15% total cost
             "currency": "USD",
             "created_date": datetime.utcnow().isoformat(),
             "coverage_terms": {
