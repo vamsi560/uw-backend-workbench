@@ -2520,8 +2520,8 @@ async def test_simple_guidewire():
         ping_request = {
             "requests": [
                 {
-                    "uri": "/rest/common/v1/ping",
-                    "method": "POST"  # Changed from GET to POST
+                    "uri": "/common/v1/ping",  # Removed /rest prefix
+                    "method": "post"           # Lowercase to match template
                 }
             ]
         }
@@ -2543,14 +2543,15 @@ async def test_simple_guidewire():
         create_request = {
             "requests": [
                 {
-                    "uri": "/account/v1/accounts",  # Removed /rest prefix
-                    "method": "POST",
+                    "uri": "/account/v1/accounts",
+                    "method": "post",  # Lowercase as in official template
                     "body": {
                         "data": {
                             "attributes": {
                                 "initialAccountHolder": {
                                     "contactSubtype": "Company",
                                     "companyName": f"Simple Test {timestamp}",
+                                    "taxId": "12-3456789",  # Added required field
                                     "primaryAddress": {
                                         "addressLine1": "123 Test St",
                                         "city": "San Francisco", 
@@ -2558,6 +2559,13 @@ async def test_simple_guidewire():
                                         "state": {"code": "CA"}
                                     }
                                 },
+                                "initialPrimaryLocation": {  # Added required field
+                                    "addressLine1": "123 Test St",
+                                    "city": "San Francisco",
+                                    "postalCode": "94105", 
+                                    "state": {"code": "CA"}
+                                },
+                                "producerCodes": [{"id": "pc:2"}],  # Added required field
                                 "organizationType": {"code": "other"}
                             }
                         }
