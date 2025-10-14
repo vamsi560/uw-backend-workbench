@@ -2613,6 +2613,80 @@ async def test_simple_guidewire():
     }
 
 
+@app.get("/api/debug/test-submission-parsing")
+async def debug_submission_parsing():
+    """
+    Debug the exact parsing logic used in the main integration
+    """
+    try:
+        from guidewire_client import GuidewireClient
+        from business_config import BusinessConfig
+        import json
+        
+        # Create sample submission data
+        sample_data = {
+            "company_name": "Debug Test Company",
+            "named_insured": "Debug Test LLC",
+            "business_address": "123 Debug St",
+            "business_city": "Test City", 
+            "business_state": "CA",
+            "business_zip": "94105",
+            "effective_date": "2024-01-01",
+            "coverage_amount": "$1,000,000"
+        }
+        
+        # Initialize Guidewire client
+        config = BusinessConfig()
+        guidewire_config = config.get_guidewire_config()
+        client = GuidewireClient(guidewire_config)
+        
+        # Test the exact same flow as main integration
+        logger.info("🔍 DEBUGGING: Testing exact submission parsing flow")
+        
+        # 1. Map data to Guidewire format (same as main integration)
+        guidewire_payload = client._map_to_guidewire_format(sample_data)
+        
+        # 2. Submit composite request (same as main integration)
+        response = client.submit_composite_request(guidewire_payload)
+        
+        # 3. Extract results (same as main integration)
+        if response["success"]:
+            result = client._extract_submission_results(response)
+            
+            return {
+                "debug_type": "SUBMISSION_PARSING",
+                "payload_generated": True,
+                "api_call_success": True,
+                "api_response_status": response.get("status_code"),
+                "parsing_result": {
+                    "success": result.get("success"),
+                    "simulation_mode": result.get("simulation_mode"),
+                    "account_id": result.get("account_id"),
+                    "account_number": result.get("account_number"),
+                    "error": result.get("error"),
+                    "message": result.get("message")
+                },
+                "raw_api_response_keys": list(response.keys()),
+                "response_data_type": str(type(response.get("data"))),
+                "has_responses_array": "responses" in str(response.get("data", {}))
+            }
+        else:
+            return {
+                "debug_type": "SUBMISSION_PARSING", 
+                "payload_generated": True,
+                "api_call_success": False,
+                "api_response_status": response.get("status_code"),
+                "api_error": response.get("error"),
+                "api_message": response.get("message")
+            }
+            
+    except Exception as e:
+        return {
+            "debug_type": "SUBMISSION_PARSING",
+            "error": str(e),
+            "success": False
+        }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
