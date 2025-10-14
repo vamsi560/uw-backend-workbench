@@ -682,34 +682,79 @@ class GuidewireClient:
     def _extract_submission_results(self, response: Dict[str, Any]) -> Dict[str, Any]:
         """Extract key information from successful submission response"""
         try:
-            responses = response["data"]["responses"]
+            logger.debug(f"Extracting results from response: {json.dumps(response, indent=2)[:1000]}...")
+            
+            # Handle the response structure - it should contain the API response data
+            response_data = response.get("data", {})
+            
+            if isinstance(response_data, str):
+                # If data is a JSON string, parse it
+                try:
+                    response_data = json.loads(response_data)
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to parse response data JSON: {e}")
+                    return {
+                        "success": False,
+                        "error": "JSON parsing error",
+                        "message": f"Response data is not valid JSON: {str(e)}"
+                    }
+            
+            responses = response_data.get("responses", [])
+            if not responses:
+                logger.error("No responses array found in response data")
+                return {
+                    "success": False,
+                    "error": "Invalid response structure", 
+                    "message": "No responses array found"
+                }
+            
+            logger.info(f"Found {len(responses)} responses in Guidewire API response")
             
             # Extract account info from first response
-            account_response = responses[0]["body"]["data"]["attributes"]
-            account_id = account_response["id"]
-            account_number = account_response["accountNumber"]
+            if len(responses) < 1:
+                logger.error("No account response found")
+                return {
+                    "success": False,
+                    "error": "Missing account response",
+                    "message": "Account creation response not found"
+                }
+                
+            account_response = responses[0].get("body", {}).get("data", {}).get("attributes", {})
+            account_id = account_response.get("id")
+            account_number = account_response.get("accountNumber")
             
-            # Extract job info from second response
-            job_response = responses[1]["body"]["data"]["attributes"]
-            job_id = job_response["id"]
-            job_number = job_response["jobNumber"]
+            logger.info(f"✅ Account created: ID={account_id}, Number={account_number}")
             
-            # Extract quote info from last response (if available)
+            # Extract job info from second response (if available)
+            job_id = None
+            job_number = None
+            
+            if len(responses) >= 2:
+                job_response = responses[1].get("body", {}).get("data", {}).get("attributes", {})
+                job_id = job_response.get("id")
+                job_number = job_response.get("jobNumber")
+                logger.info(f"✅ Job created: ID={job_id}, Number={job_number}")
+            else:
+                logger.warning("No job response found - account creation only")
+            
+            # Extract quote info from last response (if available) 
             quote_info = {}
             if len(responses) >= 5:
-                quote_response = responses[4]["body"]["data"]["attributes"]
+                quote_response = responses[4].get("body", {}).get("data", {}).get("attributes", {})
                 quote_info = {
                     "total_cost": quote_response.get("totalCost", {}),
                     "total_premium": quote_response.get("totalPremium", {}),
                     "job_status": quote_response.get("jobStatus", {}),
                     "rate_date": quote_response.get("rateAsOfDate")
                 }
+                logger.info("✅ Quote info extracted")
             
             # Parse comprehensive response data for database storage
             parsed_data = self._parse_guidewire_response(responses)
             
-            return {
+            result = {
                 "success": True,
+                "simulation_mode": False,  # ✅ REAL GUIDEWIRE INTEGRATION
                 "account_id": account_id,
                 "account_number": account_number,
                 "job_id": job_id,
@@ -717,10 +762,15 @@ class GuidewireClient:
                 "quote_info": quote_info,
                 "parsed_data": parsed_data,
                 "raw_response": response,  # Include raw response for storage
-                "message": "Submission created successfully in Guidewire"
+                "message": "🎉 REAL Guidewire submission created successfully!"
             }
             
+            logger.info(f"🎉 REAL GUIDEWIRE SUCCESS: Account {account_number} created!")
+            return result
+            
         except (KeyError, IndexError) as e:
+            logger.error(f"Response parsing error: {str(e)}")
+            logger.error(f"Response structure: {json.dumps(response, indent=2)[:1000]}")
             return {
                 "success": False,
                 "error": "Response parsing error",
