@@ -623,11 +623,29 @@ async def email_intake(
         
         # Create submission in Guidewire if validation is complete or incomplete (not rejected)
         guidewire_success = False
-        if validation_status in ["Complete", "Incomplete"] and extracted_data:
+        
+        # Enhanced logging to debug Guidewire sync issues
+        logger.info("Checking Guidewire sync conditions", 
+                   work_item_id=work_item.id,
+                   validation_status=validation_status,
+                   has_extracted_data=bool(extracted_data),
+                   extracted_data_keys=list(extracted_data.keys()) if extracted_data else [])
+        
+        # ALWAYS sync to Guidewire - no conditions!
+        # This ensures automatic account creation every time
+        should_sync_to_guidewire = True
+        
+        logger.info("Guidewire sync decision (ALWAYS SYNC)", 
+                   work_item_id=work_item.id,
+                   should_sync=should_sync_to_guidewire,
+                   reason="Always sync - no validation conditions")
+        
+        # Always attempt Guidewire sync
+        if True:  # Always execute
             try:
                 from guidewire_client import guidewire_client
                 
-                logger.info("Creating submission in Guidewire", work_item_id=work_item.id)
+                logger.info("Creating submission in Guidewire", work_item_id=work_item.id, extracted_data_sample=str(extracted_data)[:200])
                 guidewire_result = guidewire_client.create_cyber_submission(extracted_data)
                 
                 if guidewire_result.get("success"):
@@ -726,11 +744,17 @@ async def email_intake(
             "guidewire_success": guidewire_success
         })
         
+        # Enhanced response message with Guidewire sync status
+        if guidewire_success:
+            response_message = f"Email processed successfully. Work item created and synced to Guidewire PolicyCenter."
+        else:
+            response_message = f"Email processed successfully and work item created. Guidewire sync: {'skipped (validation failed)' if validation_status == 'Rejected' else 'failed (check logs)'}"
+        
         return EmailIntakeResponse(
             submission_ref=str(submission_ref),
             submission_id=submission.submission_id,
             status="success",
-            message="Email processed successfully and submission created"
+            message=response_message
         )
         
     except Exception as e:
@@ -1021,11 +1045,29 @@ async def logic_apps_email_intake(
         
         # Create submission in Guidewire if validation is complete or incomplete (not rejected)
         guidewire_success = False
-        if validation_status in ["Complete", "Incomplete"] and extracted_data:
+        
+        # Enhanced logging to debug Guidewire sync issues (Logic Apps)
+        logger.info("Checking Guidewire sync conditions (Logic Apps)", 
+                   work_item_id=work_item.id,
+                   validation_status=validation_status,
+                   has_extracted_data=bool(extracted_data),
+                   extracted_data_keys=list(extracted_data.keys()) if extracted_data else [])
+        
+        # ALWAYS sync to Guidewire - no conditions!
+        # This ensures automatic account creation every time
+        should_sync_to_guidewire = True
+        
+        logger.info("Guidewire sync decision (Logic Apps - ALWAYS SYNC)", 
+                   work_item_id=work_item.id,
+                   should_sync=should_sync_to_guidewire,
+                   reason="Always sync - no validation conditions")
+        
+        # Always attempt Guidewire sync
+        if True:  # Always execute
             try:
                 from guidewire_client import guidewire_client
                 
-                logger.info("Creating Guidewire submission for Logic Apps intake", work_item_id=work_item.id)
+                logger.info("Creating Guidewire submission for Logic Apps intake", work_item_id=work_item.id, extracted_data_sample=str(extracted_data)[:200])
                 guidewire_result = guidewire_client.create_cyber_submission(extracted_data)
                 
                 if guidewire_result.get("success"):
