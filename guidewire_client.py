@@ -345,8 +345,8 @@ class GuidewireClient:
         # Add random suffix to avoid duplicate account names 
         company_name_unique = f"{company_name} {random.randint(100000, 999999)}"
         
-        # Simple working request format (confirmed working in debug endpoint)
-        simple_request = {
+        # COMPLETE request format - creates BOTH Account AND Submission
+        complete_request = {
             "requests": [
                 {
                     "method": "post",
@@ -372,22 +372,75 @@ class GuidewireClient:
                                     "state": {"code": submission_data.get("business_state") or submission_data.get("mailing_state", "CA")}
                                 },
                                 "producerCodes": [{"id": "pc:2"}],
-                                "organizationType": {"code": "other"}  # Use simple "other" instead of complex mapping
+                                "organizationType": {"code": "other"}
                             }
                         }
                     },
                     "vars": [
                         {"name": "accountId", "path": "$.data.attributes.id"}
                     ]
+                },
+                {
+                    "method": "post", 
+                    "uri": "/job/v1/jobs",
+                    "body": {
+                        "data": {
+                            "attributes": {
+                                "accountId": "${accountId}",
+                                "jobType": "Submission",
+                                "product": {"code": "CyberLine"},
+                                "producerCodeId": "pc:2",
+                                "effectiveDate": submission_data.get("effective_date", "2025-01-01"),
+                                "expirationDate": self._calculate_expiry_date(submission_data.get("effective_date", "2025-01-01")),
+                                "policyDetails": {
+                                    "coverageAmount": submission_data.get("coverage_amount", "1000000"),
+                                    "deductible": submission_data.get("deductible", "25000"),
+                                    "policyType": submission_data.get("policy_type", "Cyber Liability"),
+                                    "aggregateLimit": submission_data.get("aggregate_limit") or submission_data.get("coverage_amount", "1000000"),
+                                    "perOccurrenceLimit": submission_data.get("per_occurrence_limit") or submission_data.get("coverage_amount", "1000000")
+                                },
+                                "businessDetails": {
+                                    "industry": submission_data.get("industry", "technology"),
+                                    "employeeCount": submission_data.get("employee_count", "50"),
+                                    "annualRevenue": submission_data.get("annual_revenue", "5000000"),
+                                    "dataTypes": submission_data.get("data_types", "Business Records"),
+                                    "securityMeasures": submission_data.get("security_measures", "Standard Security")
+                                }
+                            }
+                        }
+                    },
+                    "vars": [
+                        {"name": "jobId", "path": "$.data.attributes.id"},
+                        {"name": "jobNumber", "path": "$.data.attributes.jobNumber"}
+                    ]
                 }
             ]
         }
         
-        logger.info(f"🎯 Generated simple Guidewire request for: {company_name_unique}")
-        return simple_request
+        logger.info(f"🎯 Generated complete Guidewire request (Account + Submission) for: {company_name_unique}")
+        return complete_request
         
         # OLD COMPLEX FORMAT REMOVED - caused 400 errors
-        # Now using simple account creation that works perfectly
+        # Now creates both account AND submission with all field mapping
+    
+    def _calculate_expiry_date(self, effective_date: str) -> str:
+        """Calculate policy expiry date (1 year from effective date)"""
+        try:
+            from datetime import datetime, timedelta
+            # Parse effective date
+            if effective_date:
+                dt = datetime.strptime(effective_date, "%Y-%m-%d")
+                # Add 1 year
+                expiry_dt = dt.replace(year=dt.year + 1)
+                return expiry_dt.strftime("%Y-%m-%d")
+            else:
+                # Default to 1 year from today
+                from datetime import datetime, timedelta
+                expiry_dt = datetime.now() + timedelta(days=365)
+                return expiry_dt.strftime("%Y-%m-%d")
+        except:
+            # Fallback: default 1 year policy
+            return "2026-01-01"
     
     def _calculate_coverage_limits(self, submission_data: Dict[str, Any]) -> Dict[str, Any]:
         """Calculate appropriate coverage limits based on submission data with exact Guidewire format"""

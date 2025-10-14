@@ -11,7 +11,7 @@ import uuid
 import json
 from pydantic import BaseModel
 from dateutil import parser as date_parser
-from database import get_db, Submission, WorkItem, RiskAssessment, Comment, User, WorkItemHistory, WorkItemStatus, WorkItemPriority, CompanySize, Underwriter, SubmissionMessage, create_tables, SubmissionStatus, SubmissionHistory, HistoryAction
+from database import get_db, Submission, WorkItem, RiskAssessment, Comment, User, WorkItemHistory, WorkItemStatus, WorkItemPriority, CompanySize, Underwriter, SubmissionMessage, create_tables, SubmissionStatus, SubmissionHistory, HistoryAction, GuidewireResponse
 from llm_service import llm_service
 from models import (
     EmailIntakePayload, EmailIntakeResponse, LogicAppsEmailPayload,
@@ -659,10 +659,29 @@ async def email_intake(
                     )
                     
                     # Update work item with Guidewire IDs
+                    logger.info(f"🔍 DEBUG: Guidewire result keys: {list(guidewire_result.keys())}")
+                    logger.info(f"🔍 DEBUG: Account ID from result: {guidewire_result.get('account_id')}")
+                    logger.info(f"🔍 DEBUG: Job ID from result: {guidewire_result.get('job_id')}")
+                    
                     if guidewire_result.get("account_id"):
                         work_item.guidewire_account_id = guidewire_result["account_id"]
+                        logger.info(f"✅ Set WorkItem account_id: {guidewire_result['account_id']}")
                     if guidewire_result.get("job_id"):
                         work_item.guidewire_job_id = guidewire_result["job_id"]
+                        logger.info(f"✅ Set WorkItem job_id: {guidewire_result['job_id']}")
+                    
+                    # Fallback: Get IDs from stored GuidewireResponse if main result doesn't have them
+                    if not work_item.guidewire_account_id or not work_item.guidewire_job_id:
+                        gw_response = db.query(GuidewireResponse).filter(
+                            GuidewireResponse.work_item_id == work_item.id
+                        ).first()
+                        if gw_response:
+                            if not work_item.guidewire_account_id and gw_response.guidewire_account_id:
+                                work_item.guidewire_account_id = gw_response.guidewire_account_id
+                                logger.info(f"🔄 Fallback: Set account_id from GuidewireResponse: {gw_response.guidewire_account_id}")
+                            if not work_item.guidewire_job_id and gw_response.guidewire_job_id:
+                                work_item.guidewire_job_id = gw_response.guidewire_job_id
+                                logger.info(f"🔄 Fallback: Set job_id from GuidewireResponse: {gw_response.guidewire_job_id}")
                     
                     db.commit()
                     guidewire_success = True
@@ -1081,10 +1100,29 @@ async def logic_apps_email_intake(
                     )
                     
                     # Update work item with Guidewire IDs
+                    logger.info(f"🔍 DEBUG (LogicApps): Guidewire result keys: {list(guidewire_result.keys())}")
+                    logger.info(f"🔍 DEBUG (LogicApps): Account ID from result: {guidewire_result.get('account_id')}")
+                    logger.info(f"🔍 DEBUG (LogicApps): Job ID from result: {guidewire_result.get('job_id')}")
+                    
                     if guidewire_result.get("account_id"):
                         work_item.guidewire_account_id = guidewire_result["account_id"]
+                        logger.info(f"✅ Set WorkItem account_id: {guidewire_result['account_id']}")
                     if guidewire_result.get("job_id"):
                         work_item.guidewire_job_id = guidewire_result["job_id"]
+                        logger.info(f"✅ Set WorkItem job_id: {guidewire_result['job_id']}")
+                    
+                    # Fallback: Get IDs from stored GuidewireResponse if main result doesn't have them
+                    if not work_item.guidewire_account_id or not work_item.guidewire_job_id:
+                        gw_response = db.query(GuidewireResponse).filter(
+                            GuidewireResponse.work_item_id == work_item.id
+                        ).first()
+                        if gw_response:
+                            if not work_item.guidewire_account_id and gw_response.guidewire_account_id:
+                                work_item.guidewire_account_id = gw_response.guidewire_account_id
+                                logger.info(f"🔄 Fallback: Set account_id from GuidewireResponse: {gw_response.guidewire_account_id}")
+                            if not work_item.guidewire_job_id and gw_response.guidewire_job_id:
+                                work_item.guidewire_job_id = gw_response.guidewire_job_id
+                                logger.info(f"🔄 Fallback: Set job_id from GuidewireResponse: {gw_response.guidewire_job_id}")
                     
                     db.commit()
                     guidewire_success = True
