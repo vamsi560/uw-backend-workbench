@@ -2635,10 +2635,9 @@ async def debug_submission_parsing():
             "coverage_amount": "$1,000,000"
         }
         
-        # Initialize Guidewire client
-        config = BusinessConfig()
-        guidewire_config = config.guidewire_config
-        client = GuidewireClient(guidewire_config)
+        # Initialize Guidewire client (use the pre-configured instance)
+        from guidewire_client import guidewire_client
+        client = guidewire_client
         
         # Test the exact same flow as main integration
         logger.info("🔍 DEBUGGING: Testing exact submission parsing flow")
