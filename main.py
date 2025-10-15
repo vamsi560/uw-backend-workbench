@@ -4042,6 +4042,115 @@ async def download_stored_document(
         )
 
 
+@app.patch("/api/workitems/{work_item_id}/update-guidewire")
+async def update_work_item_guidewire_data(
+    work_item_id: int,
+    guidewire_data: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Update a work item with real Guidewire data for testing document storage
+    """
+    try:
+        # Get the work item
+        work_item = db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
+        if not work_item:
+            raise HTTPException(status_code=404, detail="Work item not found")
+        
+        # Update Guidewire fields
+        if "guidewire_job_id" in guidewire_data:
+            work_item.guidewire_job_id = guidewire_data["guidewire_job_id"]
+        if "guidewire_account_id" in guidewire_data:
+            work_item.guidewire_account_id = guidewire_data["guidewire_account_id"]
+        if "guidewire_job_number" in guidewire_data:
+            work_item.guidewire_job_number = guidewire_data["guidewire_job_number"]
+        if "guidewire_account_number" in guidewire_data:
+            work_item.guidewire_account_number = guidewire_data["guidewire_account_number"]
+        
+        work_item.updated_at = datetime.utcnow()
+        
+        # Add history entry
+        history_entry = WorkItemHistory(
+            work_item_id=work_item.id,
+            action=HistoryAction.UPDATED,
+            performed_by="System",
+            performed_by_name="System",
+            timestamp=datetime.utcnow(),
+            details={
+                "action": "updated_guidewire_data",
+                "guidewire_data": guidewire_data
+            }
+        )
+        db.add(history_entry)
+        
+        db.commit()
+        db.refresh(work_item)
+        
+        return {
+            "success": True,
+            "work_item_id": work_item_id,
+            "message": "Work item updated with Guidewire data",
+            "guidewire_data": {
+                "job_id": work_item.guidewire_job_id,
+                "account_id": work_item.guidewire_account_id,
+                "job_number": work_item.guidewire_job_number,
+                "account_number": work_item.guidewire_account_number
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating work item {work_item_id} with Guidewire data: {str(e)}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error updating Guidewire data: {str(e)}"
+        )
+
+
+@app.post("/api/test/guidewire-documents")
+async def test_guidewire_documents(
+    job_data: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Test document retrieval directly from Guidewire using job ID
+    """
+    try:
+        from guidewire_integration import guidewire_integration
+        
+        job_id = job_data.get("job_id")
+        job_number = job_data.get("job_number", "Unknown")
+        
+        if not job_id:
+            raise HTTPException(status_code=400, detail="job_id is required")
+        
+        logger.info(f"Testing document retrieval for job {job_number} ({job_id})")
+        
+        # Test document retrieval using guidewire_integration
+        result = guidewire_integration.get_quote_documents(job_id)
+        
+        return {
+            "success": result.get("success", False),
+            "job_id": job_id,
+            "job_number": job_number,
+            "documents": result.get("documents", []),
+            "message": result.get("message", "Document retrieval test completed"),
+            "error": result.get("error") if not result.get("success") else None,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error testing Guidewire documents: {str(e)}", exc_info=True)
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "Document retrieval test failed",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
