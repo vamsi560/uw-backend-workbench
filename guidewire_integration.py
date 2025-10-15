@@ -278,25 +278,64 @@ class GuidewireIntegration:
             # Parse the response to extract account and job IDs
             try:
                 data = result["data"]
+                logger.info(f"Full Guidewire response data structure: {json.dumps(data, indent=2)}")
                 
-                # Extract account ID from first response
+                # Extract account ID and job ID from composite response
                 account_id = None
                 job_id = None
                 
-                if "responses" in data and len(data["responses"]) >= 2:
-                    # Account creation response
-                    if data["responses"][0].get("status") == 200:
-                        account_response = data["responses"][0].get("body", {})
-                        if "data" in account_response and "attributes" in account_response["data"]:
-                            account_id = account_response["data"]["attributes"].get("id")
+                # Check if response has the expected composite structure
+                if "responses" in data and isinstance(data["responses"], list):
+                    logger.info(f"Found {len(data['responses'])} responses in composite result")
                     
-                    # Submission creation response  
-                    if len(data["responses"]) > 1 and data["responses"][1].get("status") == 200:
-                        submission_response = data["responses"][1].get("body", {})
-                        if "data" in submission_response and "attributes" in submission_response["data"]:
-                            job_id = submission_response["data"]["attributes"].get("id")
+                    # Iterate through all responses to find account and job IDs
+                    for i, response in enumerate(data["responses"]):
+                        logger.info(f"Response {i}: Status={response.get('status')}, Body keys={list(response.get('body', {}).keys())}")
+                        
+                        if response.get("status") == 200 or response.get("status") == 201:
+                            body = response.get("body", {})
+                            
+                            # Check if this is an account creation response
+                            if "data" in body and "attributes" in body["data"]:
+                                attrs = body["data"]["attributes"]
+                                
+                                # Look for account ID (could be 'id', 'accountNumber', etc.)
+                                if not account_id and "id" in attrs:
+                                    potential_account_id = attrs["id"]
+                                    # Check if this looks like an account ID (usually starts with specific prefix)
+                                    if potential_account_id and (str(potential_account_id).startswith("pc:") or len(str(potential_account_id)) > 5):
+                                        account_id = potential_account_id
+                                        logger.info(f"Found account ID: {account_id}")
+                                
+                                # Look for job/submission ID 
+                                if not job_id and "id" in attrs:
+                                    potential_job_id = attrs["id"]
+                                    # Job IDs are usually different from account IDs
+                                    if potential_job_id and potential_job_id != account_id:
+                                        job_id = potential_job_id
+                                        logger.info(f"Found job ID: {job_id}")
+                                
+                                # Also check for accountNumber, jobNumber fields
+                                if not account_id and "accountNumber" in attrs:
+                                    account_id = attrs["accountNumber"]
+                                    logger.info(f"Found account number: {account_id}")
+                                    
+                                if not job_id and "jobNumber" in attrs:
+                                    job_id = attrs["jobNumber"] 
+                                    logger.info(f"Found job number: {job_id}")
                 
-                logger.info(f"Extracted IDs - Account: {account_id}, Job: {job_id}")
+                # If we still don't have IDs, try alternative parsing approaches
+                if not account_id or not job_id:
+                    logger.warning("Standard parsing didn't find IDs, trying alternative approaches")
+                    
+                    # Try to extract from variable bindings if they exist
+                    if "variableBindings" in data:
+                        bindings = data["variableBindings"]
+                        account_id = account_id or bindings.get("accountId")
+                        job_id = job_id or bindings.get("jobId")
+                        logger.info(f"From variable bindings - Account: {account_id}, Job: {job_id}")
+                
+                logger.info(f"Final extracted IDs - Account: {account_id}, Job: {job_id}")
                 
                 return {
                     "success": True,
