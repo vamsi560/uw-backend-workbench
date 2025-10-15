@@ -362,6 +362,58 @@ class GuidewireResponse(Base):
     submission = relationship("Submission", backref="guidewire_response")
 
 
+class DocumentType(enum.Enum):
+    QUOTE = "Quote"
+    POLICY_TERMS = "Policy Terms"
+    PROPOSAL = "Proposal"
+    CERTIFICATE = "Certificate"
+    OTHER = "Other"
+
+
+class DocumentStatus(enum.Enum):
+    DOWNLOADED = "Downloaded"
+    STORED = "Stored"
+    ERROR = "Error"
+
+
+class QuoteDocument(Base):
+    """Store Guidewire quote documents locally for faster access"""
+    __tablename__ = "quote_documents"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    work_item_id = Column(Integer, ForeignKey("work_items.id"), nullable=False, index=True)
+    
+    # Guidewire document information
+    guidewire_document_id = Column(String(255), nullable=False, index=True)
+    guidewire_job_id = Column(String(255), nullable=False, index=True)
+    
+    # Document metadata
+    document_name = Column(String(500), nullable=False)
+    document_type = Column(Enum(DocumentType), default=DocumentType.OTHER)
+    content_type = Column(String(100), default="application/pdf")
+    file_size_bytes = Column(Integer, nullable=True)
+    
+    # Document content (stored as binary)
+    document_content = Column(Text, nullable=True)  # Base64 encoded content
+    
+    # Document URLs and references
+    guidewire_download_url = Column(Text, nullable=True)
+    local_file_path = Column(Text, nullable=True)  # If storing files on disk
+    
+    # Status and processing
+    status = Column(Enum(DocumentStatus), default=DocumentStatus.DOWNLOADED)
+    download_attempts = Column(Integer, default=0)
+    last_download_attempt = Column(DateTime, nullable=True)
+    error_message = Column(Text, nullable=True)
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    work_item = relationship("WorkItem", backref="quote_documents")
+
+
 # Database dependency
 def get_db():
     db = SessionLocal()

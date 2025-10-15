@@ -11,7 +11,7 @@ import uuid
 import json
 from pydantic import BaseModel
 from dateutil import parser as date_parser
-from database import get_db, Submission, WorkItem, RiskAssessment, Comment, User, WorkItemHistory, WorkItemStatus, WorkItemPriority, CompanySize, Underwriter, SubmissionMessage, create_tables, SubmissionStatus, SubmissionHistory, HistoryAction
+from database import get_db, Submission, WorkItem, RiskAssessment, Comment, User, WorkItemHistory, WorkItemStatus, WorkItemPriority, CompanySize, Underwriter, SubmissionMessage, create_tables, SubmissionStatus, SubmissionHistory, HistoryAction, QuoteDocument, DocumentType, DocumentStatus
 from llm_service import llm_service
 from models import (
     EmailIntakePayload, EmailIntakeResponse, LogicAppsEmailPayload,
@@ -3474,6 +3474,573 @@ async def debug_submission_parsing():
             "error": str(e),
             "success": False
         }
+
+# ===== GUIDEWIRE DOCUMENT API ENDPOINTS FOR UI TEAM =====
+
+@app.get("/api/guidewire/submissions/{work_item_id}/documents")
+async def get_submission_documents(
+    work_item_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Get all available quote documents for a work item from Guidewire
+    UI team can use this to show available documents to download
+    """
+    try:
+        from guidewire_integration import guidewire_integration
+        
+        # Get the work item
+        work_item = db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
+        if not work_item:
+            raise HTTPException(status_code=404, detail="Work item not found")
+        
+        if not work_item.guidewire_job_id:
+            raise HTTPException(
+                status_code=400, 
+                detail="Work item not yet integrated with Guidewire"
+            )
+        
+        logger.info(f"Getting documents for work item {work_item_id}, job: {work_item.guidewire_job_id}")
+        
+        # Create quote and get documents from Guidewire
+        result = guidewire_integration.create_quote_and_get_document(work_item.guidewire_job_id)
+        
+        if result.get("success"):
+            documents = result.get("documents", [])
+            
+            # Format documents for UI team
+            formatted_docs = []
+            for doc in documents:
+                if isinstance(doc, dict):
+                    doc_info = {
+                        "document_id": doc.get("id"),
+                        "document_name": doc.get("attributes", {}).get("name", "Unknown Document"),
+                        "document_type": doc.get("attributes", {}).get("type", "pdf"),
+                        "file_size": doc.get("attributes", {}).get("size"),
+                        "created_date": doc.get("attributes", {}).get("createdDate"),
+                        "download_url": f"/api/guidewire/submissions/{work_item_id}/documents/{doc.get('id')}/download"
+                    }
+                    formatted_docs.append(doc_info)
+            
+            return {
+                "work_item_id": work_item_id,
+                "guidewire_job_id": work_item.guidewire_job_id,
+                "guidewire_account_number": work_item.guidewire_account_number,
+                "guidewire_job_number": work_item.guidewire_job_number,
+                "documents": formatted_docs,
+                "documents_count": len(formatted_docs),
+                "quote_info": result.get("quote_info", {}),
+                "message": "Documents retrieved successfully"
+            }
+        else:
+            return {
+                "work_item_id": work_item_id,
+                "documents": [],
+                "documents_count": 0,
+                "error": result.get("error"),
+                "message": result.get("message", "Failed to retrieve documents from Guidewire")
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting documents for work item {work_item_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving documents: {str(e)}"
+        )
+
+
+@app.get("/api/guidewire/submissions/{work_item_id}/documents/{document_id}/download")
+async def download_submission_document(
+    work_item_id: int,
+    document_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Download a specific quote document from Guidewire
+    UI team can use this for direct document download links
+    """
+    try:
+        from guidewire_integration import guidewire_integration
+        import httpx
+        
+        # Get the work item
+        work_item = db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
+        if not work_item:
+            raise HTTPException(status_code=404, detail="Work item not found")
+        
+        if not work_item.guidewire_job_id:
+            raise HTTPException(
+                status_code=400, 
+                detail="Work item not yet integrated with Guidewire"
+            )
+        
+        logger.info(f"Downloading document {document_id} for work item {work_item_id}")
+        
+        # Get document download URL from Guidewire
+        result = guidewire_integration.get_quote_document_url(work_item.guidewire_job_id, document_id)
+        
+        if result.get("success"):
+            download_url = result.get("download_url")
+            if download_url:
+                # Stream the document from Guidewire to the client
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(
+                        download_url,
+                        auth=(guidewire_integration.username, guidewire_integration.password),
+                        timeout=60
+                    )
+                    
+                    if response.status_code == 200:
+                        # Return the document with proper headers
+                        content_type = response.headers.get("content-type", "application/pdf")
+                        content_disposition = response.headers.get("content-disposition", f'attachment; filename="document_{document_id}.pdf"')
+                        
+                        from fastapi.responses import Response
+                        return Response(
+                            content=response.content,
+                            media_type=content_type,
+                            headers={"Content-Disposition": content_disposition}
+                        )
+                    else:
+                        raise HTTPException(
+                            status_code=response.status_code,
+                            detail=f"Failed to download document from Guidewire: {response.status_code}"
+                        )
+            else:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Document download URL not available"
+                )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to get document URL: {result.get('message', 'Unknown error')}"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error downloading document {document_id} for work item {work_item_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error downloading document: {str(e)}"
+        )
+
+
+@app.post("/api/guidewire/submissions/{work_item_id}/generate-quote")
+async def generate_quote_for_submission(
+    work_item_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Generate quote and documents for a work item (if not already generated)
+    UI team can call this to trigger quote generation
+    """
+    try:
+        from guidewire_integration import guidewire_integration
+        
+        # Get the work item
+        work_item = db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
+        if not work_item:
+            raise HTTPException(status_code=404, detail="Work item not found")
+        
+        if not work_item.guidewire_job_id:
+            raise HTTPException(
+                status_code=400, 
+                detail="Work item not yet integrated with Guidewire"
+            )
+        
+        logger.info(f"Generating quote for work item {work_item_id}, job: {work_item.guidewire_job_id}")
+        
+        # Generate quote and get documents
+        result = guidewire_integration.create_quote_and_get_document(work_item.guidewire_job_id)
+        
+        if result.get("success"):
+            # Add quote generation to work item history
+            history_entry = WorkItemHistory(
+                work_item_id=work_item.id,
+                action="quote_generated",
+                performed_by="System",
+                performed_by_name="System",
+                timestamp=datetime.utcnow(),
+                details={
+                    "guidewire_job_id": work_item.guidewire_job_id,
+                    "quote_generated": True,
+                    "documents_count": len(result.get("documents", [])),
+                    "quote_info": result.get("quote_info", {})
+                }
+            )
+            db.add(history_entry)
+            db.commit()
+            
+            return {
+                "success": True,
+                "work_item_id": work_item_id,
+                "guidewire_job_id": work_item.guidewire_job_id,
+                "quote_info": result.get("quote_info", {}),
+                "documents_count": len(result.get("documents", [])),
+                "documents_url": f"/api/guidewire/submissions/{work_item_id}/documents",
+                "message": "Quote generated successfully"
+            }
+        else:
+            return {
+                "success": False,
+                "work_item_id": work_item_id,
+                "error": result.get("error"),
+                "message": result.get("message", "Failed to generate quote")
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating quote for work item {work_item_id}: {str(e)}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generating quote: {str(e)}"
+        )
+
+
+@app.post("/api/guidewire/submissions/{work_item_id}/fetch-and-store-documents")
+async def fetch_and_store_quote_documents(
+    work_item_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Fetch quote documents from Guidewire and store them in database for faster access
+    This downloads the actual document content and stores it locally
+    """
+    try:
+        from guidewire_integration import guidewire_integration
+        import httpx
+        import base64
+        
+        # Get the work item
+        work_item = db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
+        if not work_item:
+            raise HTTPException(status_code=404, detail="Work item not found")
+        
+        if not work_item.guidewire_job_id:
+            raise HTTPException(
+                status_code=400, 
+                detail="Work item not yet integrated with Guidewire"
+            )
+        
+        logger.info(f"Fetching and storing documents for work item {work_item_id}")
+        
+        # Get documents from Guidewire
+        result = guidewire_integration.create_quote_and_get_document(work_item.guidewire_job_id)
+        
+        if not result.get("success"):
+            return {
+                "success": False,
+                "work_item_id": work_item_id,
+                "error": result.get("error"),
+                "message": "Failed to fetch documents from Guidewire"
+            }
+        
+        documents = result.get("documents", [])
+        stored_documents = []
+        errors = []
+        
+        async with httpx.AsyncClient(timeout=60) as client:
+            for doc in documents:
+                if not isinstance(doc, dict):
+                    continue
+                
+                doc_id = doc.get("id")
+                if not doc_id:
+                    continue
+                
+                try:
+                    # Check if document already exists in database
+                    existing_doc = db.query(QuoteDocument).filter(
+                        QuoteDocument.work_item_id == work_item_id,
+                        QuoteDocument.guidewire_document_id == doc_id
+                    ).first()
+                    
+                    if existing_doc and existing_doc.status == DocumentStatus.STORED:
+                        logger.info(f"Document {doc_id} already stored, skipping")
+                        stored_documents.append({
+                            "document_id": doc_id,
+                            "document_name": existing_doc.document_name,
+                            "status": "already_stored",
+                            "file_size": existing_doc.file_size_bytes
+                        })
+                        continue
+                    
+                    # Get document download URL from Guidewire
+                    url_result = guidewire_integration.get_quote_document_url(work_item.guidewire_job_id, doc_id)
+                    
+                    if not url_result.get("success"):
+                        errors.append({
+                            "document_id": doc_id,
+                            "error": f"Failed to get download URL: {url_result.get('message')}"
+                        })
+                        continue
+                    
+                    download_url = url_result.get("download_url")
+                    if not download_url:
+                        errors.append({
+                            "document_id": doc_id,
+                            "error": "No download URL provided"
+                        })
+                        continue
+                    
+                    # Download the document content
+                    logger.info(f"Downloading document {doc_id} from Guidewire")
+                    response = await client.get(
+                        download_url,
+                        auth=(guidewire_integration.username, guidewire_integration.password),
+                        timeout=60
+                    )
+                    
+                    if response.status_code != 200:
+                        errors.append({
+                            "document_id": doc_id,
+                            "error": f"Download failed with status {response.status_code}"
+                        })
+                        continue
+                    
+                    # Get document metadata
+                    doc_attributes = doc.get("attributes", {})
+                    document_name = doc_attributes.get("name", f"document_{doc_id}")
+                    content_type = response.headers.get("content-type", "application/pdf")
+                    file_size = len(response.content)
+                    
+                    # Encode content as base64 for database storage
+                    content_base64 = base64.b64encode(response.content).decode('utf-8')
+                    
+                    # Determine document type
+                    doc_type = DocumentType.OTHER
+                    if "quote" in document_name.lower():
+                        doc_type = DocumentType.QUOTE
+                    elif "terms" in document_name.lower() or "policy" in document_name.lower():
+                        doc_type = DocumentType.POLICY_TERMS
+                    elif "proposal" in document_name.lower():
+                        doc_type = DocumentType.PROPOSAL
+                    elif "certificate" in document_name.lower():
+                        doc_type = DocumentType.CERTIFICATE
+                    
+                    # Create or update document record
+                    if existing_doc:
+                        # Update existing record
+                        existing_doc.document_content = content_base64
+                        existing_doc.document_name = document_name
+                        existing_doc.document_type = doc_type
+                        existing_doc.content_type = content_type
+                        existing_doc.file_size_bytes = file_size
+                        existing_doc.status = DocumentStatus.STORED
+                        existing_doc.guidewire_download_url = download_url
+                        existing_doc.download_attempts += 1
+                        existing_doc.last_download_attempt = datetime.utcnow()
+                        existing_doc.error_message = None
+                        existing_doc.updated_at = datetime.utcnow()
+                        
+                        stored_doc = existing_doc
+                    else:
+                        # Create new document record
+                        stored_doc = QuoteDocument(
+                            work_item_id=work_item_id,
+                            guidewire_document_id=doc_id,
+                            guidewire_job_id=work_item.guidewire_job_id,
+                            document_name=document_name,
+                            document_type=doc_type,
+                            content_type=content_type,
+                            file_size_bytes=file_size,
+                            document_content=content_base64,
+                            guidewire_download_url=download_url,
+                            status=DocumentStatus.STORED,
+                            download_attempts=1,
+                            last_download_attempt=datetime.utcnow()
+                        )
+                        db.add(stored_doc)
+                    
+                    db.commit()
+                    db.refresh(stored_doc)
+                    
+                    stored_documents.append({
+                        "document_id": doc_id,
+                        "database_id": stored_doc.id,
+                        "document_name": document_name,
+                        "document_type": doc_type.value,
+                        "content_type": content_type,
+                        "file_size": file_size,
+                        "status": "stored"
+                    })
+                    
+                    logger.info(f"Successfully stored document {doc_id} ({file_size} bytes)")
+                    
+                except Exception as e:
+                    logger.error(f"Error processing document {doc_id}: {str(e)}", exc_info=True)
+                    errors.append({
+                        "document_id": doc_id,
+                        "error": str(e)
+                    })
+                    
+                    # Update existing record with error status
+                    if existing_doc:
+                        existing_doc.status = DocumentStatus.ERROR
+                        existing_doc.error_message = str(e)
+                        existing_doc.download_attempts += 1
+                        existing_doc.last_download_attempt = datetime.utcnow()
+                        db.commit()
+        
+        # Add history entry
+        history_entry = WorkItemHistory(
+            work_item_id=work_item.id,
+            action="documents_fetched_and_stored",
+            performed_by="System",
+            performed_by_name="System",
+            timestamp=datetime.utcnow(),
+            details={
+                "documents_stored": len(stored_documents),
+                "errors_count": len(errors),
+                "guidewire_job_id": work_item.guidewire_job_id
+            }
+        )
+        db.add(history_entry)
+        db.commit()
+        
+        return {
+            "success": True,
+            "work_item_id": work_item_id,
+            "documents_processed": len(documents),
+            "documents_stored": len(stored_documents),
+            "errors_count": len(errors),
+            "stored_documents": stored_documents,
+            "errors": errors,
+            "message": f"Successfully processed {len(documents)} documents, stored {len(stored_documents)}"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching and storing documents for work item {work_item_id}: {str(e)}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching and storing documents: {str(e)}"
+        )
+
+
+@app.get("/api/guidewire/submissions/{work_item_id}/stored-documents")
+async def get_stored_documents(
+    work_item_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Get documents stored in database for a work item
+    Returns document metadata and provides download links
+    """
+    try:
+        # Get the work item
+        work_item = db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
+        if not work_item:
+            raise HTTPException(status_code=404, detail="Work item not found")
+        
+        # Get stored documents
+        documents = db.query(QuoteDocument).filter(
+            QuoteDocument.work_item_id == work_item_id
+        ).order_by(QuoteDocument.created_at.desc()).all()
+        
+        document_list = []
+        for doc in documents:
+            document_list.append({
+                "id": doc.id,
+                "document_id": doc.guidewire_document_id,
+                "document_name": doc.document_name,
+                "document_type": doc.document_type.value if doc.document_type else "Other",
+                "content_type": doc.content_type,
+                "file_size": doc.file_size_bytes,
+                "status": doc.status.value if doc.status else "Unknown",
+                "created_at": doc.created_at.isoformat() + "Z",
+                "updated_at": doc.updated_at.isoformat() + "Z",
+                "download_url": f"/api/guidewire/submissions/{work_item_id}/stored-documents/{doc.id}/download",
+                "has_content": bool(doc.document_content),
+                "download_attempts": doc.download_attempts,
+                "error_message": doc.error_message
+            })
+        
+        return {
+            "work_item_id": work_item_id,
+            "guidewire_job_id": work_item.guidewire_job_id,
+            "guidewire_account_number": work_item.guidewire_account_number,
+            "guidewire_job_number": work_item.guidewire_job_number,
+            "documents": document_list,
+            "documents_count": len(document_list),
+            "stored_count": len([d for d in documents if d.status == DocumentStatus.STORED]),
+            "error_count": len([d for d in documents if d.status == DocumentStatus.ERROR])
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting stored documents for work item {work_item_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving stored documents: {str(e)}"
+        )
+
+
+@app.get("/api/guidewire/submissions/{work_item_id}/stored-documents/{document_id}/download")
+async def download_stored_document(
+    work_item_id: int,
+    document_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Download a document that's stored in the database
+    Much faster than fetching from Guidewire every time
+    """
+    try:
+        # Get the stored document
+        document = db.query(QuoteDocument).filter(
+            QuoteDocument.id == document_id,
+            QuoteDocument.work_item_id == work_item_id
+        ).first()
+        
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        if not document.document_content:
+            raise HTTPException(status_code=404, detail="Document content not available")
+        
+        # Decode base64 content
+        import base64
+        try:
+            document_bytes = base64.b64decode(document.document_content)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error decoding document content: {str(e)}")
+        
+        # Return the document with proper headers
+        from fastapi.responses import Response
+        
+        # Clean filename for download
+        filename = document.document_name
+        if not filename.endswith('.pdf') and document.content_type == 'application/pdf':
+            filename += '.pdf'
+        
+        return Response(
+            content=document_bytes,
+            media_type=document.content_type or "application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(len(document_bytes))
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error downloading stored document {document_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error downloading document: {str(e)}"
+        )
+
 
 if __name__ == "__main__":
     import uvicorn
