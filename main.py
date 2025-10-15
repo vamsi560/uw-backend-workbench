@@ -1370,6 +1370,84 @@ async def debug_poll(db: Session = Depends(get_db)):
         }
 
 
+@app.post("/api/debug/test-guidewire-numbers")
+async def test_guidewire_numbers_extraction(db: Session = Depends(get_db)):
+    """Test extracting human-readable numbers from Guidewire and updating work items"""
+    try:
+        from guidewire_integration import guidewire_integration
+        
+        # Test data with unique identifier
+        test_data = {
+            "company_name": f"Number Test {datetime.utcnow().strftime('%H%M%S')}",
+            "business_address": "123 Test Street",
+            "business_city": "San Francisco", 
+            "business_state": "CA",
+            "business_zip": "94105"
+        }
+        
+        logger.info(f"Testing Guidewire number extraction with data: {test_data}")
+        
+        # Create test submission in Guidewire
+        result = guidewire_integration.create_account_and_submission(test_data)
+        
+        # Get the latest work item to potentially update
+        latest_work_item = db.query(WorkItem).order_by(WorkItem.created_at.desc()).first()
+        
+        response_data = {
+            "test_type": "guidewire_number_extraction_test",
+            "timestamp": datetime.utcnow().isoformat(),
+            "test_data": test_data,
+            "guidewire_result": result,
+            "latest_work_item": {
+                "id": latest_work_item.id if latest_work_item else None,
+                "current_account_number": latest_work_item.guidewire_account_number if latest_work_item else None,
+                "current_job_number": latest_work_item.guidewire_job_number if latest_work_item else None
+            } if latest_work_item else None
+        }
+        
+        if result.get("success"):
+            # Check if we extracted human-readable numbers
+            account_number = result.get("account_number")
+            job_number = result.get("job_number")
+            
+            if account_number and job_number:
+                response_data["extraction_success"] = True
+                response_data["extracted_numbers"] = {
+                    "account_number": account_number,
+                    "job_number": job_number
+                }
+                
+                # Update the latest work item with these numbers as a demonstration
+                if latest_work_item:
+                    latest_work_item.guidewire_account_number = account_number
+                    latest_work_item.guidewire_job_number = job_number
+                    db.commit()
+                    
+                    response_data["updated_work_item"] = {
+                        "id": latest_work_item.id,
+                        "updated_account_number": account_number,
+                        "updated_job_number": job_number,
+                        "message": "Work item updated with extracted numbers"
+                    }
+            else:
+                response_data["extraction_success"] = False
+                response_data["message"] = "Human-readable numbers not found in Guidewire response"
+        else:
+            response_data["extraction_success"] = False
+            response_data["error"] = result.get("error", "Unknown error")
+            
+        return response_data
+        
+    except Exception as e:
+        logger.error(f"Error testing Guidewire number extraction: {str(e)}", exc_info=True)
+        return {
+            "test_type": "guidewire_number_extraction_test",
+            "timestamp": datetime.utcnow().isoformat(),
+            "extraction_success": False,
+            "error": str(e)
+        }
+
+
 @app.put("/api/work-items/{work_item_id}/status")
 async def update_work_item_status(
     work_item_id: int,
