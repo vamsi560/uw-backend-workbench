@@ -288,52 +288,51 @@ class GuidewireIntegration:
                 if "responses" in data and isinstance(data["responses"], list):
                     logger.info(f"Found {len(data['responses'])} responses in composite result")
                     
-                    # Iterate through all responses to find account and job IDs
+                    # The quote response (last response) contains all the IDs we need
                     for i, response in enumerate(data["responses"]):
-                        logger.info(f"Response {i}: Status={response.get('status')}, Body keys={list(response.get('body', {}).keys())}")
+                        logger.info(f"Response {i}: Status={response.get('status')}")
                         
                         if response.get("status") == 200 or response.get("status") == 201:
                             body = response.get("body", {})
                             
-                            # Check if this is an account creation response
+                            # Check if this response has the job/quote information
                             if "data" in body and "attributes" in body["data"]:
                                 attrs = body["data"]["attributes"]
                                 
-                                # Look for account ID (could be 'id', 'accountNumber', etc.)
-                                if not account_id and "id" in attrs:
-                                    potential_account_id = attrs["id"]
-                                    # Check if this looks like an account ID (usually starts with specific prefix)
-                                    if potential_account_id and (str(potential_account_id).startswith("pc:") or len(str(potential_account_id)) > 5):
-                                        account_id = potential_account_id
+                                # Look for job ID first (this is the main identifier)
+                                if "id" in attrs and str(attrs["id"]).startswith("pc:S"):
+                                    job_id = attrs["id"]
+                                    logger.info(f"Found job ID: {job_id}")
+                                
+                                # Look for job number (human-readable identifier)
+                                if "jobNumber" in attrs:
+                                    job_number = attrs["jobNumber"]
+                                    logger.info(f"Found job number: {job_number}")
+                                
+                                # Extract account information from nested account object
+                                if "account" in attrs and isinstance(attrs["account"], dict):
+                                    account_info = attrs["account"]
+                                    if "id" in account_info:
+                                        account_id = account_info["id"]
                                         logger.info(f"Found account ID: {account_id}")
-                                
-                                # Look for job/submission ID 
-                                if not job_id and "id" in attrs:
-                                    potential_job_id = attrs["id"]
-                                    # Job IDs are usually different from account IDs
-                                    if potential_job_id and potential_job_id != account_id:
-                                        job_id = potential_job_id
-                                        logger.info(f"Found job ID: {job_id}")
-                                
-                                # Also check for accountNumber, jobNumber fields
-                                if not account_id and "accountNumber" in attrs:
-                                    account_id = attrs["accountNumber"]
-                                    logger.info(f"Found account number: {account_id}")
-                                    
-                                if not job_id and "jobNumber" in attrs:
-                                    job_id = attrs["jobNumber"] 
-                                    logger.info(f"Found job number: {job_id}")
+                                    if "displayName" in account_info:
+                                        account_number = account_info["displayName"]
+                                        logger.info(f"Found account number: {account_number}")
                 
-                # If we still don't have IDs, try alternative parsing approaches
-                if not account_id or not job_id:
-                    logger.warning("Standard parsing didn't find IDs, trying alternative approaches")
-                    
-                    # Try to extract from variable bindings if they exist
-                    if "variableBindings" in data:
-                        bindings = data["variableBindings"]
-                        account_id = account_id or bindings.get("accountId")
-                        job_id = job_id or bindings.get("jobId")
-                        logger.info(f"From variable bindings - Account: {account_id}, Job: {job_id}")
+                # If we have job_id but no account_id, try to extract from other responses
+                if job_id and not account_id:
+                    # Look through earlier responses for account creation
+                    for i, response in enumerate(data["responses"]):
+                        if response.get("status") in [200, 201]:
+                            body = response.get("body", {})
+                            if "data" in body and "attributes" in body["data"]:
+                                attrs = body["data"]["attributes"]
+                                # Look for account creation response (has accountHolder, primaryAddress, etc.)
+                                if "accountHolder" in attrs or "initialAccountHolder" in attrs:
+                                    if "id" in attrs:
+                                        account_id = attrs["id"]
+                                        logger.info(f"Found account ID from account creation response: {account_id}")
+                                        break
                 
                 logger.info(f"Final extracted IDs - Account: {account_id}, Job: {job_id}")
                 
