@@ -1846,6 +1846,7 @@ async def test_guidewire_submission_live():
             "success": submission_result.get("success", False),
             "account_id": submission_result.get("account_id"),
             "job_id": submission_result.get("job_id"),
+            "raw_response_debug": submission_result.get("full_response", {}),
             "message": "Live submission test from whitelisted IP"
         }
         
