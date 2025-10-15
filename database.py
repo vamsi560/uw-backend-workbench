@@ -253,6 +253,48 @@ class WorkItemHistory(Base):
     work_item = relationship("WorkItem", back_populates="history")
 
 
+class GuidewireLookup(Base):
+    """Quick lookup table for Guidewire account and submission numbers"""
+    __tablename__ = "guidewire_lookups"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    work_item_id = Column(Integer, ForeignKey("work_items.id"), nullable=False, index=True)
+    submission_id = Column(Integer, ForeignKey("submissions.id"), nullable=False, index=True)
+    
+    # Essential Guidewire identifiers for quick search
+    account_number = Column(String(50), nullable=True, index=True)  # Human-readable account number
+    job_number = Column(String(50), nullable=True, index=True)      # Human-readable job/submission number
+    organization_name = Column(String(255), nullable=True, index=True)  # Company name in Guidewire
+    
+    # Internal Guidewire IDs (for API calls)
+    guidewire_account_id = Column(String(100), nullable=True)  # pc:ABC123...
+    guidewire_job_id = Column(String(100), nullable=True)      # pc:JOB456...
+    
+    # Status tracking
+    account_created = Column(Boolean, default=False, index=True)
+    submission_created = Column(Boolean, default=False, index=True)
+    sync_status = Column(String(50), default="pending", index=True)  # pending, partial, complete, failed
+    
+    # Business context for easier identification
+    coverage_amount = Column(Float, nullable=True)
+    industry = Column(String(100), nullable=True)
+    contact_email = Column(String(255), nullable=True)
+    
+    # Error tracking
+    last_error = Column(Text, nullable=True)
+    retry_count = Column(Integer, default=0)
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    account_created_at = Column(DateTime, nullable=True)
+    submission_created_at = Column(DateTime, nullable=True)
+    
+    # Relationships
+    work_item = relationship("WorkItem", backref="guidewire_lookup")
+    submission = relationship("Submission", backref="guidewire_lookup")
+
+
 class GuidewireResponse(Base):
     """Store comprehensive Guidewire API response data for UI display"""
     __tablename__ = "guidewire_responses"

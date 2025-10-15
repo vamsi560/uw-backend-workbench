@@ -139,6 +139,14 @@ try:
 except Exception as e:
     logger.error(f"Failed to load quote management APIs: {str(e)}")
 
+# Include Guidewire lookup APIs for quick PolicyCenter search
+try:
+    from guidewire_lookup_apis import guidewire_lookup_router
+    app.include_router(guidewire_lookup_router)
+    logger.info("Guidewire lookup APIs loaded")
+except Exception as e:
+    logger.error(f"Failed to load Guidewire lookup APIs: {str(e)}")
+
 # Test endpoint to verify deployment
 @app.get("/api/test/deployment")
 async def test_deployment():
