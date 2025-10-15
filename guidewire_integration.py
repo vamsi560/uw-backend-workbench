@@ -280,9 +280,11 @@ class GuidewireIntegration:
                 data = result["data"]
                 logger.info(f"Full Guidewire response data structure: {json.dumps(data, indent=2)}")
                 
-                # Extract account ID and job ID from composite response
+                # Extract both internal IDs and human-readable numbers from composite response
                 account_id = None
                 job_id = None
+                account_number = None
+                job_number = None
                 
                 # Check if response has the expected composite structure
                 if "responses" in data and isinstance(data["responses"], list):
@@ -299,12 +301,11 @@ class GuidewireIntegration:
                             if "data" in body and "attributes" in body["data"]:
                                 attrs = body["data"]["attributes"]
                                 
-                                # Look for job ID first (this is the main identifier)
+                                # Look for job ID and job number (human-readable identifier)
                                 if "id" in attrs and str(attrs["id"]).startswith("pc:S"):
                                     job_id = attrs["id"]
                                     logger.info(f"Found job ID: {job_id}")
                                 
-                                # Look for job number (human-readable identifier)
                                 if "jobNumber" in attrs:
                                     job_number = attrs["jobNumber"]
                                     logger.info(f"Found job number: {job_number}")
@@ -334,14 +335,16 @@ class GuidewireIntegration:
                                         logger.info(f"Found account ID from account creation response: {account_id}")
                                         break
                 
-                logger.info(f"Final extracted IDs - Account: {account_id}, Job: {job_id}")
+                logger.info(f"Final extracted IDs - Account: {account_id} (#{account_number}), Job: {job_id} (#{job_number})")
                 
                 return {
                     "success": True,
                     "account_id": account_id,
                     "job_id": job_id,
+                    "account_number": account_number,
+                    "job_number": job_number,
                     "full_response": data,
-                    "message": "Account and submission created successfully"
+                    "message": f"Account and submission created successfully. Search in Guidewire using Account: {account_number} or Job: {job_number}"
                 }
                 
             except Exception as parse_error:

@@ -1,0 +1,7 @@
+{
+  "from": "broker2@testinsurance.com",
+  "to": "underwriting@company.com", 
+  "subject": "NEW Cyber Insurance Quote Request - XYZ Corp",
+  "body": "Please provide a quote for cyber liability insurance.\n\nCompany: XYZ Corporation\nAddress: 456 Innovation Blvd, San Francisco, CA 94107\nIndustry: Technology\nEmployees: 25\nRevenue: $2,500,000\nCoverage: $500,000",
+  "attachments": []
+}

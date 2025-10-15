@@ -131,8 +131,10 @@ class WorkItem(Base):
     last_risk_assessment = Column(DateTime, nullable=True)
     
     # Guidewire integration fields
-    guidewire_account_id = Column(String(100), nullable=True)  # Guidewire account ID
-    guidewire_job_id = Column(String(100), nullable=True)      # Guidewire job/submission ID
+    guidewire_account_id = Column(String(100), nullable=True)      # Internal Guidewire account ID (pc:xxxx)
+    guidewire_job_id = Column(String(100), nullable=True)          # Internal Guidewire job ID (pc:xxxx)
+    guidewire_account_number = Column(String(100), nullable=True)  # Human-readable account number (for search)
+    guidewire_job_number = Column(String(100), nullable=True)      # Human-readable job number (for search)
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, index=True)

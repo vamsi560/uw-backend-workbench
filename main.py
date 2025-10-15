@@ -622,11 +622,15 @@ async def email_intake(
             guidewire_result = guidewire_integration.create_account_and_submission(extracted_data or {})
             
             if guidewire_result["success"]:
-                # Update work item with Guidewire IDs
+                # Update work item with both internal IDs and human-readable numbers
                 if guidewire_result.get("account_id"):
                     work_item.guidewire_account_id = guidewire_result["account_id"]
                 if guidewire_result.get("job_id"):
                     work_item.guidewire_job_id = guidewire_result["job_id"]
+                if guidewire_result.get("account_number"):
+                    work_item.guidewire_account_number = guidewire_result["account_number"]
+                if guidewire_result.get("job_number"):
+                    work_item.guidewire_job_number = guidewire_result["job_number"]
                 
                 db.commit()
                 guidewire_success = True
