@@ -1825,10 +1825,10 @@ async def test_guidewire_submission_live():
     try:
         from guidewire_integration import guidewire_integration
         
-        # Test data
+        # Test data with unique identifier for tracking
         test_data = {
-            "company_name": "Live Test Company - Deployment",
-            "business_address": "123 Whitelisted IP Test St",
+            "company_name": f"Debug Test Company {datetime.utcnow().strftime('%H%M%S')}",
+            "business_address": "123 Debug Test Street",
             "business_city": "San Francisco",
             "business_state": "CA",
             "business_zip": "94105"
@@ -1837,8 +1837,9 @@ async def test_guidewire_submission_live():
         # Test the full submission creation
         submission_result = guidewire_integration.create_account_and_submission(test_data)
         
+        # Return full details for debugging
         return {
-            "test_type": "live_submission_test", 
+            "test_type": "live_submission_test_with_debug", 
             "timestamp": datetime.utcnow().isoformat(),
             "deployment_url": "wu-workbench-backend-h3fkfkcpbjgga7hx.centralus-01.azurewebsites.net",
             "test_data": test_data,
@@ -1846,8 +1847,13 @@ async def test_guidewire_submission_live():
             "success": submission_result.get("success", False),
             "account_id": submission_result.get("account_id"),
             "job_id": submission_result.get("job_id"),
-            "raw_response_debug": submission_result.get("full_response", {}),
-            "message": "Live submission test from whitelisted IP"
+            "full_response_structure": submission_result.get("full_response", {}),
+            "parse_details": {
+                "has_responses": "responses" in submission_result.get("full_response", {}),
+                "response_count": len(submission_result.get("full_response", {}).get("responses", [])),
+                "response_statuses": [r.get("status") for r in submission_result.get("full_response", {}).get("responses", [])]
+            },
+            "message": "Live submission test with enhanced debugging"
         }
         
     except Exception as e:
