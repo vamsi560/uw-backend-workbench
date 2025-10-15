@@ -1775,7 +1775,7 @@ async def test_guidewire_integration():
                 "authentication": "Basic Auth",
                 "format": "Composite API requests with exact team specifications"
             },
-            "network_status": "Timeout expected due to network connectivity - implementation is ready for when network access is available"
+            "network_status": "Ready to test with whitelisted IP"
         }
         
     except Exception as e:
@@ -1783,6 +1783,78 @@ async def test_guidewire_integration():
             "integration_status": "error",
             "error": str(e),
             "timestamp": datetime.utcnow().isoformat()
+        }
+
+
+@app.get("/api/guidewire/test-connection")
+async def test_guidewire_connection_live():
+    """
+    Test actual Guidewire connection from the deployed backend
+    This runs from the whitelisted IP address
+    """
+    try:
+        from guidewire_integration import guidewire_integration
+        
+        # Test the connection
+        connection_result = guidewire_integration.test_connection()
+        
+        return {
+            "test_type": "live_connection_test",
+            "timestamp": datetime.utcnow().isoformat(),
+            "deployment_url": "wu-workbench-backend-h3fkfkcpbjgga7hx.centralus-01.azurewebsites.net",
+            "guidewire_connection": connection_result,
+            "ip_whitelisted": connection_result.get("success", False),
+            "message": "Testing from whitelisted IP address" if connection_result.get("success", False) else "Connection failed - check IP whitelisting"
+        }
+        
+    except Exception as e:
+        return {
+            "test_type": "live_connection_test",
+            "timestamp": datetime.utcnow().isoformat(),
+            "error": str(e),
+            "message": "Exception during connection test"
+        }
+
+
+@app.post("/api/guidewire/test-submission")
+async def test_guidewire_submission_live():
+    """
+    Test actual Guidewire submission creation from the deployed backend
+    This uses the exact team format and runs from the whitelisted IP
+    """
+    try:
+        from guidewire_integration import guidewire_integration
+        
+        # Test data
+        test_data = {
+            "company_name": "Live Test Company - Deployment",
+            "business_address": "123 Whitelisted IP Test St",
+            "business_city": "San Francisco",
+            "business_state": "CA",
+            "business_zip": "94105"
+        }
+        
+        # Test the full submission creation
+        submission_result = guidewire_integration.create_account_and_submission(test_data)
+        
+        return {
+            "test_type": "live_submission_test", 
+            "timestamp": datetime.utcnow().isoformat(),
+            "deployment_url": "wu-workbench-backend-h3fkfkcpbjgga7hx.centralus-01.azurewebsites.net",
+            "test_data": test_data,
+            "guidewire_result": submission_result,
+            "success": submission_result.get("success", False),
+            "account_id": submission_result.get("account_id"),
+            "job_id": submission_result.get("job_id"),
+            "message": "Live submission test from whitelisted IP"
+        }
+        
+    except Exception as e:
+        return {
+            "test_type": "live_submission_test",
+            "timestamp": datetime.utcnow().isoformat(),
+            "error": str(e),
+            "message": "Exception during submission test"
         }
 
 
