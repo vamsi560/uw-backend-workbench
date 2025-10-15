@@ -1,0 +1,197 @@
+{
+	"info": {
+		"_postman_id": "d72fefee-2b56-4a3e-a568-f3ea6ec5bde5",
+		"name": "UW Collection",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "37146112"
+	},
+	"item": [
+		{
+			"name": "GetQuoteByID",
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "gw",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "su",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://pc-dev-gwcpdev.valuemom.zeta1-andromeda.guidewire.net/rest/job/v1/jobs/pc:ShylG6oN1ayx-j4JuTlYN",
+					"protocol": "https",
+					"host": [
+						"pc-dev-gwcpdev",
+						"valuemom",
+						"zeta1-andromeda",
+						"guidewire",
+						"net"
+					],
+					"path": [
+						"rest",
+						"job",
+						"v1",
+						"jobs",
+						"pc:ShylG6oN1ayx-j4JuTlYN"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "UWRulesOnJob",
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "gw",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "su",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://pc-dev-gwcpdev.valuemom.zeta1-andromeda.guidewire.net/rest/job/v1/jobs/pc:ShylG6oN1ayx-j4JuTlYN/uw-issues",
+					"protocol": "https",
+					"host": [
+						"pc-dev-gwcpdev",
+						"valuemom",
+						"zeta1-andromeda",
+						"guidewire",
+						"net"
+					],
+					"path": [
+						"rest",
+						"job",
+						"v1",
+						"jobs",
+						"pc:ShylG6oN1ayx-j4JuTlYN",
+						"uw-issues"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Special-Approve-UWRule",
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "gw",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "su",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://pc-dev-gwcpdev.valuemom.zeta1-andromeda.guidewire.net/rest/job/v1/jobs/pc:ShylG6oN1ayx-j4JuTlYN/uw-issues",
+					"protocol": "https",
+					"host": [
+						"pc-dev-gwcpdev",
+						"valuemom",
+						"zeta1-andromeda",
+						"guidewire",
+						"net"
+					],
+					"path": [
+						"rest",
+						"job",
+						"v1",
+						"jobs",
+						"pc:ShylG6oN1ayx-j4JuTlYN",
+						"uw-issues"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "ApproveUWRule",
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "gw",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "su",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"data\": {\r\n        \"attributes\": {\r\n            \"canEditApprovalBeforeBind\" :false,\r\n            \"approvalBlockingPoint\": {\r\n                \"code\" : \"BlocksIssuance\"\r\n            },\r\n            \"approvalDurationType\": {\r\n                \"code\": \"ThreeYears\"\r\n            }\r\n                \r\n            }\r\n        }\r\n    }\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://pc-dev-gwcpdev.valuemom.zeta1-andromeda.guidewire.net/rest/job/v1/jobs/pc:ShylG6oN1ayx-j4JuTlYN/uw-issues/4489/approve",
+					"protocol": "https",
+					"host": [
+						"pc-dev-gwcpdev",
+						"valuemom",
+						"zeta1-andromeda",
+						"guidewire",
+						"net"
+					],
+					"path": [
+						"rest",
+						"job",
+						"v1",
+						"jobs",
+						"pc:ShylG6oN1ayx-j4JuTlYN",
+						"uw-issues",
+						"4489",
+						"approve"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
