@@ -1,0 +1,7 @@
+{
+  "from": "broker@testinsurance.com",
+  "to": "underwriting@company.com", 
+  "subject": "Cyber Insurance Quote Request - ABC Technology Inc",
+  "body": "Please provide a quote for cyber liability insurance.\n\nCompany: ABC Technology Inc\nAddress: 123 Tech Drive, San Francisco, CA 94105\nIndustry: Technology\nEmployees: 50\nRevenue: $5,000,000\nCoverage: $1,000,000",
+  "attachments": []
+}
