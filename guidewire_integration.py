@@ -360,45 +360,161 @@ class GuidewireIntegration:
 
     def approve_submission(self, job_id: str, underwriter_notes: str = "") -> Dict[str, Any]:
         """
-        Step 2: Approve submission in Guidewire
+        Step 2: Approve submission in Guidewire using UW Issues workflow
         This is called when underwriter clicks approve
+        
+        Based on Postman collection, the workflow is:
+        1. Get UW issues for the job
+        2. Approve each UW issue individually
         """
         logger.info(f"Approving Guidewire submission: {job_id}")
         
-        # For now, we'll use a simple PATCH request to update the job status
-        # The exact approval API will need to be provided by the Guidewire team
-        approval_payload = {
-            "requests": [
-                {
-                    "method": "patch",
-                    "uri": f"/job/v1/jobs/{job_id}",
-                    "body": {
+        try:
+            # Step 1: Get UW issues for the job using direct REST API
+            uw_issues_url = f"https://pc-dev-gwcpdev.valuemom.zeta1-andromeda.guidewire.net/rest/job/v1/jobs/{job_id}/uw-issues"
+            
+            headers = {
+                'Accept': 'application/json'
+            }
+            
+            logger.info(f"Getting UW issues for job: {job_id}")
+            response = requests.get(
+                uw_issues_url,
+                auth=(self.username, self.password),
+                headers=headers,
+                timeout=self.timeout
+            )
+            
+            logger.info(f"UW issues response status: {response.status_code}")
+            
+            if response.status_code != 200:
+                return {
+                    "success": False,
+                    "error": f"HTTP {response.status_code}",
+                    "message": f"Failed to get UW issues: {response.text}"
+                }
+            
+            uw_issues_data = response.json()
+            logger.info(f"UW issues response: {json.dumps(uw_issues_data, indent=2)}")
+            
+            # Extract UW issues
+            uw_issues = []
+            if "data" in uw_issues_data:
+                if isinstance(uw_issues_data["data"], list):
+                    uw_issues = uw_issues_data["data"]
+                else:
+                    uw_issues = [uw_issues_data["data"]]
+            
+            if not uw_issues:
+                return {
+                    "success": True,
+                    "job_id": job_id,
+                    "message": "No UW issues found - submission may already be approved",
+                    "uw_issues_count": 0
+                }
+            
+            # Step 2: Approve each UW issue
+            approved_issues = []
+            failed_approvals = []
+            
+            for issue in uw_issues:
+                try:
+                    issue_id = issue.get("attributes", {}).get("id")
+                    if not issue_id:
+                        logger.warning(f"UW issue missing ID: {issue}")
+                        continue
+                    
+                    logger.info(f"Approving UW issue: {issue_id}")
+                    
+                    # Approval payload based on Postman collection
+                    approval_body = {
                         "data": {
                             "attributes": {
-                                "status": "approved",
-                                "underwriterNotes": underwriter_notes,
-                                "approvalDate": datetime.now().isoformat()
+                                "canEditApprovalBeforeBind": False,
+                                "approvalBlockingPoint": {
+                                    "code": "BlocksIssuance"
+                                },
+                                "approvalDurationType": {
+                                    "code": "ThreeYears"
+                                }
                             }
                         }
                     }
+                    
+                    # Add underwriter notes if provided
+                    if underwriter_notes:
+                        approval_body["data"]["attributes"]["approvalNotes"] = underwriter_notes
+                    
+                    approve_url = f"https://pc-dev-gwcpdev.valuemom.zeta1-andromeda.guidewire.net/rest/job/v1/jobs/{job_id}/uw-issues/{issue_id}/approve"
+                    
+                    approve_response = requests.post(
+                        approve_url,
+                        json=approval_body,
+                        auth=(self.username, self.password),
+                        headers={'Content-Type': 'application/json', 'Accept': 'application/json'},
+                        timeout=self.timeout
+                    )
+                    
+                    logger.info(f"UW issue {issue_id} approval status: {approve_response.status_code}")
+                    
+                    if approve_response.status_code in [200, 201]:
+                        approved_issues.append(issue_id)
+                        logger.info(f"Successfully approved UW issue: {issue_id}")
+                    else:
+                        failed_approvals.append({
+                            "issue_id": issue_id,
+                            "status_code": approve_response.status_code,
+                            "error": approve_response.text
+                        })
+                        logger.error(f"Failed to approve UW issue {issue_id}: {approve_response.status_code} - {approve_response.text}")
+                
+                except Exception as issue_error:
+                    logger.error(f"Error approving UW issue {issue_id}: {str(issue_error)}")
+                    failed_approvals.append({
+                        "issue_id": issue_id,
+                        "error": str(issue_error)
+                    })
+            
+            # Determine overall success
+            total_issues = len(uw_issues)
+            successful_approvals = len(approved_issues)
+            
+            if successful_approvals == total_issues:
+                return {
+                    "success": True,
+                    "job_id": job_id,
+                    "status": "approved",
+                    "message": f"All {total_issues} UW issues approved successfully",
+                    "approved_issues": approved_issues,
+                    "uw_issues_count": total_issues
                 }
-            ]
-        }
+            elif successful_approvals > 0:
+                return {
+                    "success": True,
+                    "job_id": job_id,
+                    "status": "partially_approved",
+                    "message": f"{successful_approvals}/{total_issues} UW issues approved",
+                    "approved_issues": approved_issues,
+                    "failed_approvals": failed_approvals,
+                    "uw_issues_count": total_issues
+                }
+            else:
+                return {
+                    "success": False,
+                    "job_id": job_id,
+                    "error": "ApprovalFailed",
+                    "message": f"Failed to approve any of {total_issues} UW issues",
+                    "failed_approvals": failed_approvals,
+                    "uw_issues_count": total_issues
+                }
         
-        result = self._make_request(approval_payload)
-        
-        if result["success"]:
-            return {
-                "success": True,
-                "job_id": job_id,
-                "status": "approved",
-                "message": "Submission approved successfully in Guidewire"
-            }
-        else:
+        except Exception as e:
+            logger.error(f"Error in approval workflow: {str(e)}")
             return {
                 "success": False,
-                "error": result.get("error"),
-                "message": f"Failed to approve submission in Guidewire: {result.get('message')}"
+                "job_id": job_id,
+                "error": "Exception",
+                "message": f"Approval workflow failed: {str(e)}"
             }
 
     def create_quote_and_get_document(self, job_id: str) -> Dict[str, Any]:
@@ -563,6 +679,68 @@ class GuidewireIntegration:
             return {
                 "success": False,
                 "error": "ConnectionError",
+                "message": str(e)
+            }
+
+    def get_uw_issues(self, job_id: str) -> Dict[str, Any]:
+        """
+        Get UW issues for a specific job ID
+        This is useful for checking what needs to be approved
+        """
+        logger.info(f"Getting UW issues for job: {job_id}")
+        
+        try:
+            # Use direct REST API call for UW issues
+            uw_issues_url = f"https://pc-dev-gwcpdev.valuemom.zeta1-andromeda.guidewire.net/rest/job/v1/jobs/{job_id}/uw-issues"
+            
+            headers = {
+                'Accept': 'application/json'
+            }
+            
+            response = requests.get(
+                uw_issues_url,
+                auth=(self.username, self.password),
+                headers=headers,
+                timeout=self.timeout
+            )
+            
+            logger.info(f"UW issues API response status: {response.status_code}")
+            
+            if response.status_code == 200:
+                uw_issues_data = response.json()
+                logger.info(f"UW issues response: {json.dumps(uw_issues_data, indent=2)}")
+                
+                # Extract UW issues list
+                uw_issues = []
+                if "data" in uw_issues_data:
+                    if isinstance(uw_issues_data["data"], list):
+                        uw_issues = uw_issues_data["data"]
+                    else:
+                        uw_issues = [uw_issues_data["data"]]
+                
+                return {
+                    "success": True,
+                    "job_id": job_id,
+                    "uw_issues": uw_issues,
+                    "uw_issues_count": len(uw_issues),
+                    "message": f"Found {len(uw_issues)} UW issues for job {job_id}"
+                }
+            else:
+                logger.error(f"UW issues API failed: {response.status_code} - {response.text}")
+                return {
+                    "success": False,
+                    "job_id": job_id,
+                    "error": f"HTTP {response.status_code}",
+                    "message": response.text,
+                    "status_code": response.status_code
+                }
+                
+        except Exception as e:
+            logger.error(f"Error retrieving UW issues: {str(e)}")
+            return {
+                "success": False,
+                "job_id": job_id,
+                "error": "Exception",
                 "message": str(e)
             }
 

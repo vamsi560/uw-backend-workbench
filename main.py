@@ -4151,6 +4151,224 @@ async def test_guidewire_documents(
         }
 
 
+@app.post("/api/workitems/{work_item_id}/approve")
+async def approve_submission(
+    work_item_id: int,
+    approval_data: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Approve a submission in Guidewire by approving UW issues
+    """
+    try:
+        from guidewire_integration import guidewire_integration
+        
+        # Get the work item
+        work_item = db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
+        if not work_item:
+            raise HTTPException(status_code=404, detail="Work item not found")
+        
+        # Check if work item has Guidewire job ID
+        if not work_item.guidewire_job_id:
+            raise HTTPException(
+                status_code=400, 
+                detail="Work item does not have a Guidewire job ID. Create submission first."
+            )
+        
+        # Get approval data
+        underwriter_notes = approval_data.get("underwriter_notes", "")
+        approved_by = approval_data.get("approved_by", "Unknown Underwriter")
+        
+        logger.info(f"Approving Guidewire submission for work item {work_item_id}, job {work_item.guidewire_job_id}")
+        
+        # Call Guidewire approval API
+        result = guidewire_integration.approve_submission(
+            job_id=work_item.guidewire_job_id,
+            underwriter_notes=underwriter_notes
+        )
+        
+        if result.get("success"):
+            # Update work item status to approved
+            work_item.status = WorkItemStatus.APPROVED
+            work_item.updated_at = datetime.utcnow()
+            
+            # Add approval history entry
+            history_entry = WorkItemHistory(
+                work_item_id=work_item.id,
+                action=HistoryAction.APPROVED,
+                performed_by=approved_by,
+                performed_by_name=approved_by,
+                timestamp=datetime.utcnow(),
+                details={
+                    "action": "approved_in_guidewire",
+                    "underwriter_notes": underwriter_notes,
+                    "guidewire_result": result,
+                    "approved_issues": result.get("approved_issues", []),
+                    "uw_issues_count": result.get("uw_issues_count", 0)
+                }
+            )
+            db.add(history_entry)
+            
+            db.commit()
+            db.refresh(work_item)
+            
+            return {
+                "success": True,
+                "work_item_id": work_item_id,
+                "job_id": work_item.guidewire_job_id,
+                "status": result.get("status", "approved"),
+                "message": result.get("message", "Submission approved successfully"),
+                "approved_issues": result.get("approved_issues", []),
+                "uw_issues_count": result.get("uw_issues_count", 0),
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        else:
+            # Approval failed - add failure history entry but don't change status
+            history_entry = WorkItemHistory(
+                work_item_id=work_item.id,
+                action=HistoryAction.UPDATED,
+                performed_by=approved_by,
+                performed_by_name=approved_by,
+                timestamp=datetime.utcnow(),
+                details={
+                    "action": "approval_failed",
+                    "error": result.get("error"),
+                    "message": result.get("message"),
+                    "failed_approvals": result.get("failed_approvals", [])
+                }
+            )
+            db.add(history_entry)
+            db.commit()
+            
+            return {
+                "success": False,
+                "work_item_id": work_item_id,
+                "job_id": work_item.guidewire_job_id,
+                "error": result.get("error"),
+                "message": result.get("message"),
+                "failed_approvals": result.get("failed_approvals", []),
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error approving submission for work item {work_item_id}: {str(e)}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error approving submission: {str(e)}"
+        )
+
+
+@app.get("/api/workitems/{work_item_id}/uw-issues")
+async def get_uw_issues(
+    work_item_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Get UW issues for a work item from Guidewire
+    """
+    try:
+        from guidewire_integration import guidewire_integration
+        
+        # Get the work item
+        work_item = db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
+        if not work_item:
+            raise HTTPException(status_code=404, detail="Work item not found")
+        
+        # Check if work item has Guidewire job ID
+        if not work_item.guidewire_job_id:
+            raise HTTPException(
+                status_code=400, 
+                detail="Work item does not have a Guidewire job ID. Create submission first."
+            )
+        
+        logger.info(f"Getting UW issues for work item {work_item_id}, job {work_item.guidewire_job_id}")
+        
+        # Get UW issues from Guidewire
+        result = guidewire_integration.get_uw_issues(work_item.guidewire_job_id)
+        
+        return {
+            "success": result.get("success", False),
+            "work_item_id": work_item_id,
+            "job_id": work_item.guidewire_job_id,
+            "job_number": work_item.guidewire_job_number,
+            "uw_issues": result.get("uw_issues", []),
+            "uw_issues_count": result.get("uw_issues_count", 0),
+            "message": result.get("message", "UW issues retrieved"),
+            "error": result.get("error") if not result.get("success") else None,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting UW issues for work item {work_item_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error getting UW issues: {str(e)}"
+        )
+
+
+@app.post("/api/test/approval-workflow")
+async def test_approval_workflow(
+    test_data: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Test the complete approval workflow with a specific job ID
+    """
+    try:
+        from guidewire_integration import guidewire_integration
+        
+        job_id = test_data.get("job_id")
+        if not job_id:
+            raise HTTPException(status_code=400, detail="job_id is required")
+        
+        logger.info(f"Testing approval workflow for job: {job_id}")
+        
+        # Step 1: Test connection
+        connection_result = guidewire_integration.test_connection()
+        
+        # Step 2: Get UW issues
+        uw_issues_result = guidewire_integration.get_uw_issues(job_id)
+        
+        # Step 3: Attempt approval if there are UW issues
+        approval_result = None
+        if uw_issues_result.get("success") and uw_issues_result.get("uw_issues"):
+            approval_result = guidewire_integration.approve_submission(
+                job_id=job_id,
+                underwriter_notes="Test approval via API"
+            )
+        
+        return {
+            "success": True,
+            "job_id": job_id,
+            "test_results": {
+                "connection": connection_result,
+                "uw_issues": uw_issues_result,
+                "approval": approval_result
+            },
+            "summary": {
+                "connection_success": connection_result.get("success", False),
+                "uw_issues_found": uw_issues_result.get("uw_issues_count", 0),
+                "approval_attempted": approval_result is not None,
+                "approval_success": approval_result.get("success", False) if approval_result else None
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error testing approval workflow: {str(e)}", exc_info=True)
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "Approval workflow test failed",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
