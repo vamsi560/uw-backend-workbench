@@ -529,17 +529,104 @@ class GuidewireIntegration:
         """Test connection to Guidewire"""
         logger.info("Testing Guidewire connection")
         
-        # Simple test request
-        test_payload = {
-            "requests": [
-                {
-                    "method": "get",
-                    "uri": "/account/v1/account-organization-types"
+        # Use a direct REST API call instead of composite for connection test
+        try:
+            test_url = "https://pc-dev-gwcpdev.valuemom.zeta1-andromeda.guidewire.net/rest/account/v1/account-organization-types"
+            
+            headers = {
+                'Accept': 'application/json'
+            }
+            
+            response = requests.get(
+                test_url,
+                auth=(self.username, self.password),
+                headers=headers,
+                timeout=self.timeout
+            )
+            
+            if response.status_code == 200:
+                return {
+                    "success": True,
+                    "status_code": response.status_code,
+                    "message": "Successfully connected to Guidewire"
                 }
-            ]
-        }
+            else:
+                return {
+                    "success": False,
+                    "status_code": response.status_code,
+                    "error": f"HTTP {response.status_code}",
+                    "message": response.text
+                }
+                
+        except Exception as e:
+            logger.error(f"Connection test failed: {str(e)}")
+            return {
+                "success": False,
+                "error": "ConnectionError",
+                "message": str(e)
+            }
+
+    def get_quote_documents(self, job_id: str) -> Dict[str, Any]:
+        """
+        Get quote documents for a specific job ID
+        This uses the direct REST API to retrieve documents for a quoted job
+        """
+        logger.info(f"Retrieving documents for job: {job_id}")
         
-        return self._make_request(test_payload)
+        try:
+            # Use direct REST API call for documents
+            documents_url = f"https://pc-dev-gwcpdev.valuemom.zeta1-andromeda.guidewire.net/rest/job/v1/jobs/{job_id}/documents"
+            
+            headers = {
+                'Accept': 'application/json'
+            }
+            
+            response = requests.get(
+                documents_url,
+                auth=(self.username, self.password),
+                headers=headers,
+                timeout=self.timeout
+            )
+            
+            logger.info(f"Documents API response status: {response.status_code}")
+            
+            if response.status_code == 200:
+                documents_data = response.json()
+                logger.info(f"Documents response: {json.dumps(documents_data, indent=2)}")
+                
+                # Extract document list
+                documents = []
+                if "data" in documents_data:
+                    if isinstance(documents_data["data"], list):
+                        documents = documents_data["data"]
+                    else:
+                        documents = [documents_data["data"]]
+                
+                return {
+                    "success": True,
+                    "job_id": job_id,
+                    "documents": documents,
+                    "documents_count": len(documents),
+                    "message": f"Found {len(documents)} documents for job {job_id}"
+                }
+            else:
+                logger.error(f"Documents API failed: {response.status_code} - {response.text}")
+                return {
+                    "success": False,
+                    "job_id": job_id,
+                    "error": f"HTTP {response.status_code}",
+                    "message": response.text,
+                    "status_code": response.status_code
+                }
+                
+        except Exception as e:
+            logger.error(f"Error retrieving documents: {str(e)}")
+            return {
+                "success": False,
+                "job_id": job_id,
+                "error": "Exception",
+                "message": str(e)
+            }
 
 # Create global instance
 guidewire_integration = GuidewireIntegration()
