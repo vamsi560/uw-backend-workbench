@@ -2258,7 +2258,8 @@ async def poll_workitems(
                     status_code=400,
                     detail="Invalid 'since' timestamp format. Use ISO format (e.g., 2025-09-28T10:00:00Z)"
                 )
-        
+        # filtering to exclude null guidewire job_id's
+        query = query.filter(WorkItem.guidewire_job_id.isnot(None))
         # Apply filters
         if search:
             search_filter = f"%{search}%"
@@ -2341,6 +2342,8 @@ async def poll_workitems(
                     "coverage_amount": work_item.coverage_amount,
                     "created_at": work_item.created_at.isoformat() + "Z",
                     "updated_at": work_item.updated_at.isoformat() + "Z",
+                    "guidewire_account_number": work_item.guidewire_account_number,
+                    "guidewire_job_number": work_item.guidewire_job_number,
                     "extracted_fields": _parse_extracted_fields(submission.extracted_fields) if submission.extracted_fields else {}
                 },
                 "risk_assessment": {
@@ -4578,3 +4581,4 @@ async def get_raw_submissions(
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
