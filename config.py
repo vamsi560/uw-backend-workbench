@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     upload_dir: str = "uploads"
     
     # Guidewire PolicyCenter Configuration
-    guidewire_base_url: str = "*" #"https://pc-dev-gwcpdev.valuemom.zeta1-andromeda.guidewire.net"
+    guidewire_base_url: str = "https://pc-dev-gwcpdev.valuemom.zeta1-andromeda.guidewire.net"
     guidewire_username: Optional[str] = "su"  # Default username
     guidewire_password: Optional[str] = "gw"  # Default password
     guidewire_bearer_token: Optional[str] = None  # Static bearer token (if available)
@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     
     # CORS Settings for Vercel
     # For production, set to comma-separated list of allowed origins
-    cors_origins: str = "https://uw-workbench-portal.vercel.app,https://uw-workbench-jade.vercel.app"
+    cors_origins: str = "*" #"https://uw-workbench-portal.vercel.app,https://uw-workbench-jade.vercel.app"
     cors_credentials: bool = True
     cors_methods: str = "*"
     cors_headers: str = "*"
@@ -37,4 +37,5 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
 
