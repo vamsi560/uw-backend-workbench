@@ -1247,7 +1247,7 @@ async def get_all_submissions(
                 sender_email=submission.sender_email,
                 body_text=submission.body_text,
                 attachment_content=submission.attachment_content,
-                extracted_fields=submission.extracted_fields,
+                extracted_fields=_parse_extracted_fields(submission.extracted_fields),
                 assigned_to=submission.assigned_to,
                 task_status=submission.task_status,
                 created_at=submission.created_at
@@ -4367,6 +4367,212 @@ async def test_approval_workflow(
             "message": "Approval workflow test failed",
             "timestamp": datetime.utcnow().isoformat()
         }
+
+
+@app.get("/api/workitems/email-content")
+async def get_workitems_with_email_content(
+    skip: int = 0,
+    limit: int = 20,
+    work_item_id: int = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Get work items with full email body and attachment content from submissions table
+    This endpoint bypasses validation issues and provides direct access to email content
+    """
+    logger.info("Retrieving work items with email content", skip=skip, limit=limit, work_item_id=work_item_id)
+    
+    try:
+        # Build query to join WorkItem with Submission
+        query = db.query(WorkItem, Submission).join(
+            Submission, WorkItem.submission_id == Submission.id
+        )
+        
+        # Filter by specific work item if requested
+        if work_item_id:
+            query = query.filter(WorkItem.id == work_item_id)
+        else:
+            query = query.order_by(WorkItem.created_at.desc()).offset(skip).limit(limit)
+        
+        results = query.all()
+        
+        items = []
+        for work_item, submission in results:
+            # Parse extracted fields safely
+            extracted_fields = {}
+            if submission.extracted_fields:
+                try:
+                    if isinstance(submission.extracted_fields, str):
+                        extracted_fields = json.loads(submission.extracted_fields)
+                    elif isinstance(submission.extracted_fields, dict):
+                        extracted_fields = submission.extracted_fields
+                except json.JSONDecodeError:
+                    logger.warning(f"Failed to parse extracted_fields for submission {submission.id}")
+                    extracted_fields = {}
+            
+            item_data = {
+                # Work item info
+                "work_item_id": work_item.id,
+                "work_item_status": work_item.status.value if work_item.status else "Unknown",
+                "work_item_priority": work_item.priority.value if work_item.priority else "Medium",
+                "assigned_to": work_item.assigned_to,
+                "risk_score": work_item.risk_score,
+                "created_at": work_item.created_at.isoformat() + "Z",
+                "updated_at": work_item.updated_at.isoformat() + "Z",
+                
+                # Submission info
+                "submission_id": submission.id,
+                "submission_ref": str(submission.submission_ref),
+                "subject": submission.subject,
+                "sender_email": submission.sender_email,
+                
+                # RAW EMAIL CONTENT (what UI team needs!)
+                "email_body": submission.body_text,  # Raw email body content
+                "attachment_content": submission.attachment_content,  # Decoded attachment text
+                
+                # Additional metadata
+                "received_at": submission.received_at.isoformat() + "Z" if submission.received_at else None,
+                "task_status": submission.task_status,
+                
+                # Extracted structured data (safely parsed)
+                "extracted_fields": extracted_fields,
+                
+                # Business data (from extracted fields for convenience)
+                "company_name": extracted_fields.get("company_name", "Not specified"),
+                "industry": extracted_fields.get("industry", "Not specified"),
+                "coverage_amount": extracted_fields.get("coverage_amount", "Not specified"),
+                "annual_revenue": extracted_fields.get("annual_revenue", "Not specified"),
+                "business_address": extracted_fields.get("business_address", "Not specified"),
+                "contact_email": extracted_fields.get("contact_email", "Not specified"),
+                "contact_phone": extracted_fields.get("contact_phone", "Not specified")
+            }
+            
+            items.append(item_data)
+        
+        # Return single item if specific work_item_id requested
+        if work_item_id:
+            if items:
+                return {
+                    "success": True,
+                    "work_item": items[0],
+                    "message": "Work item with email content retrieved successfully"
+                }
+            else:
+                raise HTTPException(status_code=404, detail="Work item not found")
+        
+        # Return list of items
+        return {
+            "success": True,
+            "items": items,
+            "count": len(items),
+            "skip": skip,
+            "limit": limit,
+            "total_available": db.query(WorkItem).join(Submission).count(),
+            "message": f"Retrieved {len(items)} work items with email content"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error retrieving work items with email content", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving work items with email content: {str(e)}"
+        )
+
+
+@app.get("/api/submissions/raw")
+async def get_raw_submissions(
+    skip: int = 0,
+    limit: int = 20,
+    submission_id: int = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Get raw submission data with email body and attachment content
+    This endpoint provides direct access to submissions table without validation issues
+    """
+    logger.info("Retrieving raw submissions", skip=skip, limit=limit, submission_id=submission_id)
+    
+    try:
+        # Build query
+        query = db.query(Submission)
+        
+        # Filter by specific submission if requested
+        if submission_id:
+            query = query.filter(Submission.id == submission_id)
+        else:
+            query = query.order_by(Submission.created_at.desc()).offset(skip).limit(limit)
+        
+        submissions = query.all()
+        
+        items = []
+        for submission in submissions:
+            # Parse extracted fields safely
+            extracted_fields = {}
+            if submission.extracted_fields:
+                try:
+                    if isinstance(submission.extracted_fields, str):
+                        extracted_fields = json.loads(submission.extracted_fields)
+                    elif isinstance(submission.extracted_fields, dict):
+                        extracted_fields = submission.extracted_fields
+                except json.JSONDecodeError:
+                    logger.warning(f"Failed to parse extracted_fields for submission {submission.id}")
+                    extracted_fields = {}
+            
+            item_data = {
+                "id": submission.id,
+                "submission_id": submission.submission_id,
+                "submission_ref": str(submission.submission_ref),
+                "subject": submission.subject,
+                "sender_email": submission.sender_email,
+                
+                # RAW EMAIL CONTENT
+                "email_body": submission.body_text,
+                "attachment_content": submission.attachment_content,
+                
+                # Metadata
+                "received_at": submission.received_at.isoformat() + "Z" if submission.received_at else None,
+                "created_at": submission.created_at.isoformat() + "Z",
+                "task_status": submission.task_status,
+                "assigned_to": submission.assigned_to,
+                
+                # Extracted fields (safely parsed)
+                "extracted_fields": extracted_fields
+            }
+            
+            items.append(item_data)
+        
+        # Return single item if specific submission_id requested
+        if submission_id:
+            if items:
+                return {
+                    "success": True,
+                    "submission": items[0],
+                    "message": "Raw submission retrieved successfully"
+                }
+            else:
+                raise HTTPException(status_code=404, detail="Submission not found")
+        
+        # Return list of items
+        return {
+            "success": True,
+            "submissions": items,
+            "count": len(items),
+            "skip": skip,
+            "limit": limit,
+            "total_available": db.query(Submission).count(),
+            "message": f"Retrieved {len(items)} raw submissions"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error retrieving raw submissions", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving raw submissions: {str(e)}"
+        )
 
 
 if __name__ == "__main__":
