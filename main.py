@@ -2402,6 +2402,8 @@ async def poll_workitems(
                 updated_at=work_item.updated_at,
                 comments_count=comments_count,
                 has_urgent_comments=has_urgent_comments,
+                guidewire_account_number: work_item.guidewire_account_number,
+                guidewire_job_number: work_item.guidewire_job_number,
                 extracted_fields=_parse_extracted_fields(submission.extracted_fields) if submission.extracted_fields else {}
             )
             
@@ -4581,4 +4583,5 @@ async def get_raw_submissions(
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
 
