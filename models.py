@@ -250,6 +250,8 @@ class WorkItemSummary(BaseModel):
     updated_at: datetime
     comments_count: int = 0
     has_urgent_comments: bool = False
+    guidewire_job_number: Optional[str] = None
+    guidewire_account_number: Optional[str] = None
     extracted_fields: Optional[Dict[str, Any]] = None
 
 
