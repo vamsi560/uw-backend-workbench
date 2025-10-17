@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     upload_dir: str = "uploads"
     
     # Guidewire PolicyCenter Configuration
-    guidewire_base_url: str = "https://pc-dev-gwcpdev.valuemom.zeta1-andromeda.guidewire.net"
+    guidewire_base_url: str = "*" #"https://pc-dev-gwcpdev.valuemom.zeta1-andromeda.guidewire.net"
     guidewire_username: Optional[str] = "su"  # Default username
     guidewire_password: Optional[str] = "gw"  # Default password
     guidewire_bearer_token: Optional[str] = None  # Static bearer token (if available)
@@ -37,3 +37,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
