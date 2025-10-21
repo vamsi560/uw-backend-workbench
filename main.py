@@ -2213,7 +2213,7 @@ async def submit_work_item_to_guidewire(work_item_id: int, db: Session = Depends
 
 # ===== Polling-based updates for Vercel compatibility =====
 
-@app.get("/api/workitems/poll", response_model=EnhancedPollingResponse)
+@app.get("/api/workitems/poll")
 async def poll_workitems(
     since: str = None,
     limit: int = 50,
@@ -2318,7 +2318,7 @@ async def poll_workitems(
             # Get risk assessment
             risk_assessment = db.query(RiskAssessment).filter(
                 RiskAssessment.work_item_id == work_item_id
-            ).order_by(RiskAssessment.assessment_date.desc()).first()
+            ).order_by(RiskAssessment.created_at.desc()).first()
             
             # Get history
             history = db.query(WorkItemHistory).filter(
@@ -2412,7 +2412,7 @@ async def poll_workitems(
                 # Get risk assessment for this item
                 risk_assessment = db.query(RiskAssessment).filter(
                     RiskAssessment.work_item_id == work_item.id
-                ).order_by(RiskAssessment.assessment_date.desc()).first()
+                ).order_by(RiskAssessment.created_at.desc()).first()
                 
                 # Add risk assessment data to item
                 if risk_assessment:
