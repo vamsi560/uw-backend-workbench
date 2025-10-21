@@ -2260,6 +2260,7 @@ async def poll_workitems(
                 )
         # filtering to exclude null guidewire job_id's
         query = query.filter(WorkItem.guidewire_job_id.isnot(None))
+        query = query.filter(WorkItem.status != "APPROVED")
         # Apply filters
         if search:
             search_filter = f"%{search}%"
