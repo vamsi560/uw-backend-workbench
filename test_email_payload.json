@@ -1,8 +1,0 @@
-{
-    "subject": "Guidewire Integration Test - Whitelisted IP",
-    "body": "This is a test email to verify that our Guidewire integration works with the whitelisted IP address. Company Name: Test Cyber Security Ltd. Industry: Technology. Business Address: 456 Integration Test Blvd, San Francisco, CA 94105. Coverage Amount: $100,000. Policy Type: Cyber Liability Insurance.",
-    "from": "test@guidewireintegration.com",
-    "to": "underwriting@company.com",
-    "received_at": "2025-10-15T07:25:00Z",
-    "attachments": []
-}

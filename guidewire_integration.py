@@ -517,6 +517,76 @@ class GuidewireIntegration:
                 "message": f"Approval workflow failed: {str(e)}"
             }
 
+    def reject_submission(self, job_id: str, rejection_reason: str, rejected_by: str = "") -> Dict[str, Any]:
+        """
+        Step 2B: Reject submission in Guidewire
+        This is called when underwriter clicks reject
+        """
+        logger.info(f"Rejecting Guidewire submission: {job_id}")
+        
+        try:
+            # Use the decline endpoint from the Guidewire API
+            decline_url = f"https://pc-dev-gwcpdev.valuemom.zeta1-andromeda.guidewire.net/rest/job/v1/jobs/{job_id}/decline"
+            
+            # Rejection payload
+            rejection_body = {
+                "data": {
+                    "attributes": {
+                        "declineReason": {
+                            "code": "other",  # or specific decline reason codes like "underwriting", "coverage", etc.
+                            "name": "Underwriter Decision"
+                        },
+                        "declineExplanation": rejection_reason
+                    }
+                }
+            }
+            
+            headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+            
+            logger.info(f"Making rejection request to: {decline_url}")
+            logger.info(f"Rejection payload: {json.dumps(rejection_body, indent=2)}")
+            
+            response = requests.post(
+                decline_url,
+                json=rejection_body,
+                auth=(self.username, self.password),
+                headers=headers,
+                timeout=self.timeout
+            )
+            
+            logger.info(f"Decline response status: {response.status_code}")
+            logger.info(f"Decline response: {response.text}")
+            
+            if response.status_code in [200, 201]:
+                return {
+                    "success": True,
+                    "job_id": job_id,
+                    "status": "rejected",
+                    "message": f"Submission declined successfully in Guidewire",
+                    "rejection_reason": rejection_reason,
+                    "rejected_by": rejected_by
+                }
+            else:
+                logger.error(f"Failed to decline submission: {response.status_code} - {response.text}")
+                return {
+                    "success": False,
+                    "job_id": job_id,
+                    "error": f"HTTP {response.status_code}",
+                    "message": f"Failed to decline submission: {response.text}"
+                }
+                
+        except Exception as e:
+            logger.error(f"Error in rejection workflow: {str(e)}")
+            return {
+                "success": False,
+                "job_id": job_id,
+                "error": "Exception",
+                "message": f"Rejection workflow failed: {str(e)}"
+            }
+
     def create_quote_and_get_document(self, job_id: str) -> Dict[str, Any]:
         """
         Step 3: Create quote and retrieve document

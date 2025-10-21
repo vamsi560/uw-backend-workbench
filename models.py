@@ -246,6 +246,7 @@ class WorkItemSummary(BaseModel):
     policy_type: Optional[str] = None
     coverage_amount: Optional[float] = None
     last_risk_assessment: Optional[datetime] = None
+    underwriting_notes: Optional[str] = None  # Underwriter notes during review/decision
     created_at: datetime
     updated_at: datetime
     comments_count: int = 0
@@ -271,6 +272,7 @@ class WorkItemDetail(BaseModel):
     policy_type: Optional[str] = None
     coverage_amount: Optional[float] = None
     last_risk_assessment: Optional[datetime] = None
+    underwriting_notes: Optional[str] = None  # Underwriter notes during review/decision
     created_at: datetime
     updated_at: datetime
     

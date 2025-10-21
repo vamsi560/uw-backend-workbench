@@ -130,6 +130,9 @@ class WorkItem(Base):
     coverage_amount = Column(Float, nullable=True)
     last_risk_assessment = Column(DateTime, nullable=True)
     
+    # Underwriter notes and decision tracking
+    underwriting_notes = Column(Text, nullable=True)  # Notes entered by underwriter during review/decision
+    
     # Guidewire integration fields
     guidewire_account_id = Column(String(100), nullable=True)      # Internal Guidewire account ID (pc:xxxx)
     guidewire_job_id = Column(String(100), nullable=True)          # Internal Guidewire job ID (pc:xxxx)

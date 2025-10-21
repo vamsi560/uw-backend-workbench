@@ -4194,8 +4194,9 @@ async def approve_submission(
         )
         
         if result.get("success"):
-            # Update work item status to approved
+            # Update work item status to approved and save underwriter notes
             work_item.status = WorkItemStatus.APPROVED
+            work_item.underwriting_notes = underwriter_notes
             work_item.updated_at = datetime.utcnow()
             
             # Add approval history entry
@@ -4265,6 +4266,166 @@ async def approve_submission(
             status_code=500,
             detail=f"Error approving submission: {str(e)}"
         )
+
+
+@app.post("/api/workitems/{work_item_id}/reject")
+async def reject_submission(
+    work_item_id: int,
+    rejection_data: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Reject a submission in Guidewire
+    """
+    try:
+        from guidewire_integration import guidewire_integration
+        
+        # Get the work item
+        work_item = db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
+        if not work_item:
+            raise HTTPException(status_code=404, detail="Work item not found")
+        
+        if not work_item.guidewire_job_id:
+            raise HTTPException(
+                status_code=400, 
+                detail="Work item does not have a Guidewire job ID"
+            )
+        
+        # Get rejection data
+        rejection_reason = rejection_data.get("rejection_reason", "")
+        rejected_by = rejection_data.get("rejected_by", "Unknown Underwriter")
+        underwriting_notes = rejection_data.get("underwriting_notes", "")
+        
+        if not rejection_reason:
+            raise HTTPException(status_code=400, detail="Rejection reason is required")
+        
+        logger.info(f"Rejecting Guidewire submission for work item {work_item_id}")
+        
+        # Call Guidewire rejection API
+        result = guidewire_integration.reject_submission(
+            job_id=work_item.guidewire_job_id,
+            rejection_reason=rejection_reason,
+            rejected_by=rejected_by
+        )
+        
+        if result.get("success"):
+            # Update work item status to rejected and save underwriter notes
+            work_item.status = WorkItemStatus.REJECTED
+            work_item.underwriting_notes = underwriting_notes
+            work_item.updated_at = datetime.utcnow()
+            
+            # Add rejection history entry
+            history_entry = WorkItemHistory(
+                work_item_id=work_item.id,
+                action=HistoryAction.REJECTED,
+                performed_by=rejected_by,
+                performed_by_name=rejected_by,
+                timestamp=datetime.utcnow(),
+                details={
+                    "action": "rejected_in_guidewire",
+                    "rejection_reason": rejection_reason,
+                    "underwriting_notes": underwriting_notes,
+                    "guidewire_result": result
+                }
+            )
+            db.add(history_entry)
+            db.commit()
+            
+            return {
+                "success": True,
+                "work_item_id": work_item_id,
+                "job_id": work_item.guidewire_job_id,
+                "status": "rejected",
+                "message": "Submission rejected successfully",
+                "rejection_reason": rejection_reason,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        else:
+            # Add failure history entry
+            history_entry = WorkItemHistory(
+                work_item_id=work_item.id,
+                action=HistoryAction.UPDATED,
+                performed_by=rejected_by,
+                performed_by_name=rejected_by,
+                timestamp=datetime.utcnow(),
+                details={
+                    "action": "rejection_failed",
+                    "error": result.get("error"),
+                    "message": result.get("message")
+                }
+            )
+            db.add(history_entry)
+            db.commit()
+            
+            return {
+                "success": False,
+                "work_item_id": work_item_id,
+                "error": result.get("error"),
+                "message": result.get("message")
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error rejecting submission: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error rejecting submission: {str(e)}")
+
+
+@app.put("/api/workitems/{work_item_id}/notes")
+async def update_underwriting_notes(
+    work_item_id: int,
+    notes_data: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Update underwriting notes for a work item
+    This allows underwriters to save notes during their review process
+    """
+    try:
+        # Get the work item
+        work_item = db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
+        if not work_item:
+            raise HTTPException(status_code=404, detail="Work item not found")
+        
+        # Get notes data
+        underwriting_notes = notes_data.get("underwriting_notes", "")
+        updated_by = notes_data.get("updated_by", "Unknown User")
+        
+        # Update work item with new notes
+        work_item.underwriting_notes = underwriting_notes
+        work_item.updated_at = datetime.utcnow()
+        
+        # Add history entry for notes update
+        history_entry = WorkItemHistory(
+            work_item_id=work_item.id,
+            action=HistoryAction.UPDATED,
+            performed_by=updated_by,
+            performed_by_name=updated_by,
+            timestamp=datetime.utcnow(),
+            details={
+                "action": "underwriting_notes_updated",
+                "notes_length": len(underwriting_notes),
+                "has_notes": bool(underwriting_notes.strip())
+            }
+        )
+        db.add(history_entry)
+        db.commit()
+        
+        return {
+            "success": True,
+            "work_item_id": work_item_id,
+            "message": "Underwriting notes updated successfully",
+            "notes_length": len(underwriting_notes),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating underwriting notes: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error updating underwriting notes: {str(e)}")
 
 
 @app.get("/api/workitems/{work_item_id}/uw-issues")
