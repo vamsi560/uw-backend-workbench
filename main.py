@@ -465,7 +465,7 @@ async def email_intake(
         safe_sender = str(sender_email)[:240]  # Truncate email if too long
         
         # Handle body_text safely - must fit database VARCHAR(255) constraint
-        safe_body = processed_body[:240] + "..." if len(processed_body) > 240 else processed_body
+        safe_body = processed_body #[:240] + "..." if len(processed_body) > 240 else processed_body
         
         # Create submission record directly with safe field lengths
         submission = Submission(
