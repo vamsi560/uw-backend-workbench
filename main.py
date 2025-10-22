@@ -426,28 +426,20 @@ async def email_intake(
                 attachment_text = parse_attachments(valid_attachments, settings.upload_dir)
         
         # Process body content (handle HTML if present)
-        original_body = str(request.body) if request.body else 'No body content'
-        processed_body = original_body  # Default to original
-        
-        # Check if body contains HTML content
-        is_html_content = '<html>' in original_body.lower() or '<body>' in original_body.lower()
-        
-        if is_html_content:
+        processed_body = str(request.body) if request.body else 'No body content'
+        if '<html>' in processed_body.lower() or '<body>' in processed_body.lower():
             try:
                 from bs4 import BeautifulSoup
-                soup = BeautifulSoup(original_body, 'html.parser')
+                soup = BeautifulSoup(processed_body, 'html.parser')
                 text_content = soup.get_text(strip=True, separator=' ')
                 if text_content and text_content.strip():
-                    processed_body = text_content  # Use text version for processing
+                    processed_body = text_content
                     logger.info("HTML content converted to text", 
-                               html_length=len(original_body), 
+                               html_length=len(str(request.body)), 
                                text_length=len(text_content))
-                else:
-                    processed_body = "Email contains HTML content but no readable text"
             except Exception as html_error:
                 logger.warning("HTML processing failed, using original content", 
                               error=str(html_error))
-                processed_body = original_body
         
         # Combine email body and attachment text with null safety
         combined_text = f"Email Subject: {str(request.subject) if request.subject else 'No subject'}\n"
@@ -468,20 +460,20 @@ async def email_intake(
         # Generate unique submission ID with timestamp
         next_submission_id = f"SUB-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
         
-        # Prepare fields for database (Text type supports full content)
-        safe_subject = (request.subject or "No subject")  # Store full subject
-        safe_sender = str(sender_email)  # Store full email address
+        # Prepare safe field lengths for database (VARCHAR(255) constraints)
+        safe_subject = (request.subject or "No subject")[:240]  # Truncate subject if too long
+        safe_sender = str(sender_email)[:240]  # Truncate email if too long
         
-        # Store complete email body content (both HTML and text versions)
+        # Handle body_text safely - must fit database VARCHAR(255) constraint
+        safe_body = processed_body[:240] + "..." if len(processed_body) > 240 else processed_body
         
-        # Create submission record with both HTML and text versions
+        # Create submission record directly with safe field lengths
         submission = Submission(
             submission_id=next_submission_id,
             submission_ref=submission_ref,
             subject=safe_subject,
             sender_email=safe_sender,
-            body_text=processed_body,  # Plain text version (HTML stripped)
-            body_html=original_body if is_html_content else None,  # Original HTML format (only if HTML detected)
+            body_text=safe_body,
             attachment_content=str(attachment_text) if attachment_text else None,  # Store decoded attachment content
             extracted_fields=extracted_data,
             received_at=received_at_dt,  # Store original email received timestamp
@@ -806,7 +798,6 @@ async def logic_apps_email_intake(
         # Process body content (handle HTML and potential base64 encoding)
         safe_body = str(request.safe_body)
         decoded_body_for_llm = safe_body  # Default fallback
-        original_body_content = safe_body  # Keep original for HTML storage
         
         # First, check if body is base64 encoded (common in some Logic Apps scenarios)
         is_base64_encoded = False
@@ -817,7 +808,6 @@ async def logic_apps_email_intake(
             if len(safe_body) > 100 and re.match(r'^[A-Za-z0-9+/=]+$', safe_body) and '<' not in safe_body:
                 decoded_body = base64.b64decode(safe_body).decode('utf-8')
                 decoded_body_for_llm = decoded_body
-                original_body_content = decoded_body  # Use decoded version as original
                 is_base64_encoded = True
                 logger.info("Body decoded from base64 for processing", 
                            original_length=len(safe_body), 
@@ -825,27 +815,24 @@ async def logic_apps_email_intake(
         except Exception as decode_error:
             logger.debug("Body is not base64 encoded", error=str(decode_error))
         
-        # Check if content is HTML and process accordingly
-        is_html_content = '<html>' in decoded_body_for_llm.lower() or '<body>' in decoded_body_for_llm.lower()
-        
-        if is_html_content:
+        # Process HTML content if present (whether base64 decoded or original)
+        if '<html>' in decoded_body_for_llm.lower() or '<body>' in decoded_body_for_llm.lower():
             try:
                 from bs4 import BeautifulSoup
                 soup = BeautifulSoup(decoded_body_for_llm, 'html.parser')
                 # Extract text content, removing HTML tags
                 text_content = soup.get_text(strip=True, separator=' ')
                 if text_content and text_content.strip():
-                    decoded_body_for_llm = text_content  # Use text version for LLM processing
+                    decoded_body_for_llm = text_content
                     logger.info("HTML content converted to text", 
-                               html_length=len(original_body_content), 
+                               html_length=len(str(request.safe_body)), 
                                text_length=len(text_content))
                 else:
-                    # If no meaningful text extracted, provide fallback
+                    # If no meaningful text extracted, keep original
                     decoded_body_for_llm = "Email body contains HTML with no readable text content"
             except Exception as html_error:
                 logger.warning("HTML processing failed, using original content", 
                               error=str(html_error))
-                decoded_body_for_llm = original_body_content
         
         # Combine email body and attachment text using decoded content
         # Extract company name from subject if available
@@ -876,16 +863,20 @@ async def logic_apps_email_intake(
         # Generate unique submission ID with timestamp
         next_submission_id = f"SUB-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
         
-        # Store complete body content (both HTML and text versions) 
+        # Prepare body_text for database storage with safe length handling
+        # Truncate the decoded content for database storage
+        if decoded_body_for_llm != safe_body:  # Successfully decoded
+            body_text = decoded_body_for_llm[:240] + "..." if len(decoded_body_for_llm) > 240 else decoded_body_for_llm
+        else:  # Decoding failed, use original but truncate
+            body_text = safe_body[:240] + "..." if len(safe_body) > 240 else safe_body
         
-        # Create submission record with both HTML and text versions
+        # Create submission record with safe field lengths (VARCHAR(255) constraints)
         submission = Submission(
             submission_id=next_submission_id,
             submission_ref=submission_ref,
-            subject=str(request.safe_subject),  # Store full subject content
-            sender_email=str(request.safe_from),  # Store full email address  
-            body_text=decoded_body_for_llm,  # Plain text version (HTML stripped if applicable)
-            body_html=original_body_content if is_html_content else None,  # Original HTML format (only if HTML detected)
+            subject=str(request.safe_subject)[:240],  # Truncate subject to fit database
+            sender_email=str(request.safe_from)[:240],  # Truncate email to fit database  
+            body_text=body_text,
             attachment_content=attachment_text,  # Store decoded attachment content
             extracted_fields=extracted_data,
             received_at=received_at_dt,
@@ -4603,8 +4594,7 @@ async def get_workitems_with_email_content(
                 "sender_email": submission.sender_email,
                 
                 # RAW EMAIL CONTENT (what UI team needs!)
-                "email_body": submission.body_text,  # Plain text version (HTML stripped)
-                "email_body_html": getattr(submission, 'body_html', None),  # Original HTML format (if available)
+                "email_body": submission.body_text,  # Raw email body content
                 "attachment_content": submission.attachment_content,  # Decoded attachment text
                 
                 # Additional metadata
@@ -4705,8 +4695,7 @@ async def get_raw_submissions(
                 "sender_email": submission.sender_email,
                 
                 # RAW EMAIL CONTENT
-                "email_body": submission.body_text,  # Plain text version (HTML stripped)
-                "email_body_html": getattr(submission, 'body_html', None),  # Original HTML format (if available)
+                "email_body": submission.body_text,
                 "attachment_content": submission.attachment_content,
                 
                 # Metadata

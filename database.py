@@ -78,8 +78,7 @@ class Submission(Base):
     submission_ref = Column(SQLAlchemyUUID, unique=True, index=True, default=uuid.uuid4)
     subject = Column(Text, nullable=False)
     sender_email = Column(Text, nullable=False)
-    body_text = Column(Text)  # Plain text version of email body (HTML stripped)
-    body_html = Column(Text, nullable=True)  # Original HTML format email body
+    body_text = Column(Text)
     attachment_content = Column(Text, nullable=True)  # Decoded attachment text content
     extracted_fields = Column(JSON)  # JSONB equivalent
     assigned_to = Column(Text)  # underwriter email/name
