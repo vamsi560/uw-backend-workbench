@@ -8,8 +8,8 @@ import requests
 import json
 from datetime import datetime
 
-# Test with the local development server
-BASE_URL = "http://localhost:8000"  # Change to production URL when testing
+# Test with production server
+BASE_URL = "https://wu-workbench-backend-h3fkfkcpbjgga7hx.centralus-01.azurewebsites.net"
 
 def test_html_email_processing():
     """Test HTML email processing and storage"""

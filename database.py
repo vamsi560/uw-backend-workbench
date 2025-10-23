@@ -211,16 +211,26 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class UnderwriterLevel(enum.Enum):
+    """Underwriter experience levels"""
+    JUNIOR = "junior"
+    SENIOR = "senior"
+    PRINCIPAL = "principal"
+    MANAGER = "manager"
+
+
 class Underwriter(Base):
     __tablename__ = "underwriters"
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
+    level = Column(Enum(UnderwriterLevel), nullable=False, default=UnderwriterLevel.JUNIOR)  # Experience level
     specializations = Column(JSON)  # Array of insurance specializations
     max_coverage_limit = Column(Float, nullable=True)  # Maximum coverage they can underwrite
     current_workload = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
+    department = Column(String(100), nullable=True)  # Cyber, Property, etc.
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

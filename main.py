@@ -2341,6 +2341,7 @@ async def poll_workitems(
                     "industry": work_item.industry,
                     "policy_type": work_item.policy_type,
                     "coverage_amount": work_item.coverage_amount,
+                    "underwriting_notes": work_item.underwriting_notes or "",
                     "created_at": work_item.created_at.isoformat() + "Z",
                     "updated_at": work_item.updated_at.isoformat() + "Z",
                     "guidewire_account_number": work_item.guidewire_account_number,
@@ -2399,6 +2400,7 @@ async def poll_workitems(
                 policy_type=work_item.policy_type,
                 coverage_amount=work_item.coverage_amount,
                 last_risk_assessment=work_item.last_risk_assessment,
+                underwriting_notes=work_item.underwriting_notes,
                 created_at=work_item.created_at,
                 updated_at=work_item.updated_at,
                 comments_count=comments_count,
@@ -2729,6 +2731,8 @@ async def list_underwriters(db: Session = Depends(get_db)):
                 "id": uw.id,
                 "name": uw.name,
                 "email": uw.email,
+                "level": uw.level.value if hasattr(uw, 'level') and uw.level else "JUNIOR",
+                "department": uw.department if hasattr(uw, 'department') else "Cyber Insurance",
                 "specializations": uw.specializations or [],
                 "max_coverage_limit": uw.max_coverage_limit,
                 "workload": uw.current_workload or 0
@@ -2736,6 +2740,235 @@ async def list_underwriters(db: Session = Depends(get_db)):
             for uw in underwriters
         ]
     }
+
+
+@app.get("/api/underwriters/by-level")
+async def list_underwriters_by_level(db: Session = Depends(get_db)):
+    """Get underwriters grouped by experience level for UI dropdown"""
+    
+    from database import UnderwriterLevel
+    
+    underwriters = db.query(Underwriter).filter(Underwriter.is_active == True).order_by(Underwriter.level, Underwriter.name).all()
+    
+    # Group by level
+    by_level = {
+        "JUNIOR": [],
+        "SENIOR": [],
+        "PRINCIPAL": [],
+        "MANAGER": []
+    }
+    
+    for uw in underwriters:
+        level_key = uw.level.value if hasattr(uw, 'level') and uw.level else "JUNIOR"
+        if level_key in by_level:
+            by_level[level_key].append({
+                "id": uw.id,
+                "name": uw.name,
+                "email": uw.email,
+                "department": uw.department if hasattr(uw, 'department') else "Cyber Insurance",
+                "specializations": uw.specializations or [],
+                "max_coverage_limit": uw.max_coverage_limit,
+                "workload": uw.current_workload or 0,
+                "available": (uw.current_workload or 0) < 10  # Simple availability check
+            })
+    
+    return {
+        "underwriters_by_level": by_level,
+        "summary": {
+            level: len(underwriters) 
+            for level, underwriters in by_level.items()
+        }
+    }
+
+
+class WorkItemAssignmentRequest(BaseModel):
+    new_underwriter_id: int
+    reason: str | None = "Reassignment by management"
+
+
+@app.put("/api/workitems/{work_item_id}/reassign")
+async def reassign_workitem_underwriter(
+    work_item_id: int,
+    assignment: WorkItemAssignmentRequest,
+    db: Session = Depends(get_db)
+):
+    """Reassign work item to a different underwriter (Junior to Senior, etc.)"""
+    
+    try:
+        # Get the work item
+        workitem = db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
+        if not workitem:
+            raise HTTPException(status_code=404, detail="Work item not found")
+        
+        # Get new underwriter 
+        new_underwriter = db.query(Underwriter).filter(Underwriter.id == assignment.new_underwriter_id).first()
+        if not new_underwriter:
+            raise HTTPException(status_code=404, detail="New underwriter not found")
+        
+        if not new_underwriter.is_active:
+            raise HTTPException(status_code=400, detail="Selected underwriter is not active")
+        
+        # Get old underwriter details for logging
+        old_underwriter = None
+        if workitem.assigned_underwriter:
+            old_underwriter = db.query(Underwriter).filter(Underwriter.email == workitem.assigned_underwriter).first()
+        
+        # Store old assignment for history
+        old_assignment = workitem.assigned_underwriter
+        old_level = old_underwriter.level.value if old_underwriter and hasattr(old_underwriter, 'level') and old_underwriter.level else "Unknown"
+        new_level = new_underwriter.level.value if hasattr(new_underwriter, 'level') and new_underwriter.level else "Unknown"
+        
+        # Update assignment
+        workitem.assigned_underwriter = new_underwriter.email
+        workitem.updated_at = datetime.now()
+        
+        # Update workload counts
+        if old_underwriter and old_underwriter.id != new_underwriter.id:
+            old_underwriter.current_workload = max(0, (old_underwriter.current_workload or 0) - 1)
+        
+        new_underwriter.current_workload = (new_underwriter.current_workload or 0) + 1
+        
+        # Log the reassignment in audit trail
+        if workitem.submission_id:
+            history_entry = SubmissionHistory(
+                submission_id=workitem.submission_id,
+                old_status=workitem.status,
+                new_status=workitem.status,  # Status unchanged, just reassignment
+                changed_by=f"System - Reassigned from {old_assignment or 'Unassigned'} ({old_level}) to {new_underwriter.email} ({new_level})",
+                reason=assignment.reason or f"Reassignment: {old_level} → {new_level}",
+                timestamp=datetime.now()
+            )
+            db.add(history_entry)
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": f"Work item reassigned from {old_assignment or 'Unassigned'} ({old_level}) to {new_underwriter.name} ({new_level})",
+            "details": {
+                "work_item_id": work_item_id,
+                "old_underwriter": {
+                    "email": old_assignment,
+                    "name": old_underwriter.name if old_underwriter else "Unassigned",
+                    "level": old_level
+                },
+                "new_underwriter": {
+                    "id": new_underwriter.id,
+                    "email": new_underwriter.email,
+                    "name": new_underwriter.name,
+                    "level": new_level,
+                    "department": new_underwriter.department if hasattr(new_underwriter, 'department') else "Cyber Insurance"
+                },
+                "reason": assignment.reason,
+                "timestamp": datetime.now()
+            }
+        }
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error reassigning work item {work_item_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to reassign work item: {str(e)}")
+
+
+@app.get("/api/workitems/{work_item_id}/assignment-options")
+async def get_assignment_options(
+    work_item_id: int,
+    db: Session = Depends(get_db)
+):
+    """Get available underwriters for reassignment with recommendations"""
+    
+    try:
+        # Get current work item
+        workitem = db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
+        if not workitem:
+            raise HTTPException(status_code=404, detail="Work item not found")
+        
+        # Get current underwriter
+        current_underwriter = None
+        if workitem.assigned_underwriter:
+            current_underwriter = db.query(Underwriter).filter(Underwriter.email == workitem.assigned_underwriter).first()
+        
+        # Get all active underwriters - handle missing level column gracefully
+        all_underwriters = db.query(Underwriter).filter(Underwriter.is_active == True).all()
+        
+        # Sort by level and workload if level exists, otherwise just by workload
+        try:
+            all_underwriters = sorted(all_underwriters, key=lambda x: (
+                x.level.value if hasattr(x, 'level') and x.level else "JUNIOR",
+                x.current_workload or 0
+            ))
+        except:
+            all_underwriters = sorted(all_underwriters, key=lambda x: x.current_workload or 0)
+        
+        # Categorize recommendations
+        recommendations = {
+            "escalation": [],  # Junior → Senior, Senior → Principal, etc.
+            "lateral": [],     # Same level, different person
+            "delegation": [],  # Senior → Junior (if appropriate)
+            "current": None
+        }
+        
+        current_level = current_underwriter.level if current_underwriter and hasattr(current_underwriter, 'level') else None
+        
+        for uw in all_underwriters:
+            # Skip current underwriter
+            if current_underwriter and uw.id == current_underwriter.id:
+                recommendations["current"] = {
+                    "id": uw.id,
+                    "name": uw.name,
+                    "email": uw.email,
+                    "level": uw.level.value if hasattr(uw, 'level') and uw.level else "JUNIOR",
+                    "department": uw.department if hasattr(uw, 'department') else "Cyber Insurance",
+                    "workload": uw.current_workload or 0
+                }
+                continue
+            
+            uw_level = uw.level.value if hasattr(uw, 'level') and uw.level else "JUNIOR"
+            uw_data = {
+                "id": uw.id,
+                "name": uw.name,
+                "email": uw.email,
+                "level": uw_level,
+                "department": uw.department if hasattr(uw, 'department') else "Cyber Insurance",
+                "workload": uw.current_workload or 0,
+                "available": (uw.current_workload or 0) < 10,
+                "specializations": uw.specializations or []
+            }
+            
+            # Determine category
+            if current_level:
+                current_level_value = current_level.value if hasattr(current_level, 'value') else str(current_level)
+                if uw_level in ["SENIOR", "PRINCIPAL", "MANAGER"] and current_level_value == "JUNIOR":
+                    recommendations["escalation"].append(uw_data)
+                elif uw_level in ["PRINCIPAL", "MANAGER"] and current_level_value == "SENIOR":
+                    recommendations["escalation"].append(uw_data)
+                elif uw_level == "MANAGER" and current_level_value == "PRINCIPAL":
+                    recommendations["escalation"].append(uw_data)
+                elif uw_level == current_level_value:
+                    recommendations["lateral"].append(uw_data)
+                elif uw_level == "JUNIOR" and current_level_value in ["SENIOR", "PRINCIPAL", "MANAGER"]:
+                    recommendations["delegation"].append(uw_data)
+            else:
+                # No current assignment, all are valid
+                if uw_level in ["SENIOR", "PRINCIPAL", "MANAGER"]:
+                    recommendations["escalation"].append(uw_data)
+                else:
+                    recommendations["lateral"].append(uw_data)
+        
+        return {
+            "work_item_id": work_item_id,
+            "current_assignment": recommendations["current"],
+            "recommendations": recommendations,
+            "summary": {
+                "escalation_options": len(recommendations["escalation"]),
+                "lateral_options": len(recommendations["lateral"]),
+                "delegation_options": len(recommendations["delegation"])
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting assignment options for work item {work_item_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get assignment options: {str(e)}")
 
 
 @app.get("/api/refresh-data")
@@ -4372,6 +4605,37 @@ async def reject_submission(
         raise HTTPException(status_code=500, detail=f"Error rejecting submission: {str(e)}")
 
 
+@app.get("/api/workitems/{work_item_id}/notes")
+async def get_underwriting_notes(
+    work_item_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Get underwriting notes for a work item
+    This allows UI to retrieve the notes that were submitted by underwriters
+    """
+    try:
+        # Get the work item
+        work_item = db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
+        if not work_item:
+            raise HTTPException(status_code=404, detail="Work item not found")
+        
+        return {
+            "success": True,
+            "work_item_id": work_item_id,
+            "underwriting_notes": work_item.underwriting_notes or "",
+            "notes_length": len(work_item.underwriting_notes or ""),
+            "has_notes": bool((work_item.underwriting_notes or "").strip()),
+            "last_updated": work_item.updated_at.isoformat() + "Z" if work_item.updated_at else None
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting underwriting notes: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error getting underwriting notes: {str(e)}")
+
+
 @app.put("/api/workitems/{work_item_id}/notes")
 async def update_underwriting_notes(
     work_item_id: int,
@@ -4584,6 +4848,7 @@ async def get_workitems_with_email_content(
                 "work_item_priority": work_item.priority.value if work_item.priority else "Medium",
                 "assigned_to": work_item.assigned_to,
                 "risk_score": work_item.risk_score,
+                "underwriting_notes": work_item.underwriting_notes or "",
                 "created_at": work_item.created_at.isoformat() + "Z",
                 "updated_at": work_item.updated_at.isoformat() + "Z",
                 
