@@ -2,7 +2,7 @@
 import logging
 from typing import List
 from fastapi import FastAPI, HTTPException, Depends, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
@@ -1530,112 +1530,6 @@ async def update_work_item_status(
 
 
 
-# Step 2: Underwriter Approval Endpoint
-@app.post("/api/workitems/{work_item_id}/approve")
-async def approve_work_item(
-    work_item_id: int, 
-    approval_data: dict = None,
-    db: Session = Depends(get_db)
-):
-    """
-    Approve a work item and update Guidewire submission status
-    This is called when underwriter clicks approve in the portal
-    """
-    try:
-        from guidewire_integration import guidewire_integration
-        
-        # Get the work item
-        work_item = db.query(WorkItem).filter(WorkItem.id == work_item_id).first()
-        if not work_item:
-            raise HTTPException(status_code=404, detail="Work item not found")
-        
-        if not work_item.guidewire_job_id:
-            raise HTTPException(status_code=400, detail="Work item not yet synced to Guidewire")
-        
-        # Extract approval data
-        approval_data = approval_data or {}
-        underwriter_notes = approval_data.get("notes", "")
-        approved_by = approval_data.get("approved_by", "System")
-        
-        logger.info(f"Approving work item {work_item_id} in Guidewire", 
-                   job_id=work_item.guidewire_job_id,
-                   approved_by=approved_by)
-        
-        # Call Guidewire approval API
-        result = guidewire_integration.approve_submission(
-            job_id=work_item.guidewire_job_id,
-            underwriter_notes=underwriter_notes
-        )
-        
-        if result["success"]:
-            # Update work item status to approved
-            work_item.status = WorkItemStatus.APPROVED
-            work_item.updated_at = datetime.utcnow()
-            
-            # Add approval to work item history
-            approval_history = WorkItemHistory(
-                work_item_id=work_item.id,
-                action=HistoryAction.UPDATED,
-                performed_by=approved_by,
-                performed_by_name=approved_by,
-                timestamp=datetime.utcnow(),
-                details={
-                    "status": "approved",
-                    "guidewire_job_id": work_item.guidewire_job_id,
-                    "underwriter_notes": underwriter_notes,
-                    "guidewire_approval_success": True
-                }
-            )
-            db.add(approval_history)
-            db.commit()
-            db.refresh(work_item)
-            
-            return {
-                "success": True,
-                "work_item_id": work_item_id,
-                "status": "approved",
-                "guidewire_job_id": work_item.guidewire_job_id,
-                "message": "Work item approved successfully and updated in Guidewire"
-            }
-        else:
-            # Update work item but note Guidewire failure
-            work_item.updated_at = datetime.utcnow()
-            
-            failure_history = WorkItemHistory(
-                work_item_id=work_item.id,
-                action=HistoryAction.UPDATED,
-                performed_by=approved_by,
-                performed_by_name=approved_by,
-                timestamp=datetime.utcnow(),
-                details={
-                    "status": "approval_failed_in_guidewire",
-                    "guidewire_job_id": work_item.guidewire_job_id,
-                    "error": result.get("error"),
-                    "message": result.get("message")
-                }
-            )
-            db.add(failure_history)
-            db.commit()
-            
-            return {
-                "success": False,
-                "work_item_id": work_item_id,
-                "error": result.get("error"),
-                "message": result.get("message"),
-                "guidewire_job_id": work_item.guidewire_job_id
-            }
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error approving work item {work_item_id}: {str(e)}", exc_info=True)
-        db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error approving work item: {str(e)}"
-        )
-
-
 # Step 3: Quote Creation and Document Retrieval Endpoints
 @app.post("/api/workitems/{work_item_id}/create-quote")
 async def create_quote_for_work_item(
@@ -1951,6 +1845,22 @@ async def test_guidewire_submission_live():
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+
+# Robots handling: Azure intermittently probes random robotsNNNNNN.txt paths; serve a simple robots response
+@app.get("/robots.txt")
+async def robots_txt():
+    return PlainTextResponse("User-agent: *\nDisallow:\n")
+
+@app.get("/robots933456.txt")
+async def robots_random_probe():
+    # Specific noisy probe observed in logs; respond identically to /robots.txt
+    return PlainTextResponse("User-agent: *\nDisallow:\n")
+
+# Favicon handling to avoid 500s on automatic browser requests
+@app.get("/favicon.ico")
+async def favicon():
+    # Return 204 No Content to signal absence without error
+    return PlainTextResponse("", status_code=204)
 
 
 @app.get("/api/test/guidewire")

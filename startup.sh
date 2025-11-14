@@ -22,13 +22,22 @@ except Exception as e:
     print(f'Database setup error: {e}')
 "
 
-# Start the FastAPI application with Gunicorn
-echo "Starting FastAPI application..."
-exec gunicorn main:app \
-    --bind 0.0.0.0:8000 \
-    --workers 2 \
-    --worker-class uvicorn.workers.UvicornWorker \
-    --timeout 120 \
-    --access-logfile - \
-    --error-logfile - \
-    --log-level info
+# Start the FastAPI application with Gunicorn (ASGI via uvicorn worker). Fallback to uvicorn if Gunicorn fails.
+echo "Starting FastAPI application with Gunicorn (uvicorn worker)..."
+GUNICORN_CMD="gunicorn main:app --bind 0.0.0.0:8000 --workers ${WEB_CONCURRENCY:-2} --worker-class uvicorn.workers.UvicornWorker --timeout 180 --access-logfile - --error-logfile - --log-level info"
+
+if command -v gunicorn >/dev/null 2>&1; then
+    echo "Launching Gunicorn: $GUNICORN_CMD"
+    eval $GUNICORN_CMD || FALLBACK=1
+else
+    echo "Gunicorn not found, enabling fallback"
+    FALLBACK=1
+fi
+
+if [ "$FALLBACK" = "1" ]; then
+    echo "FALLBACK: Starting with uvicorn directly"
+    exec python -m uvicorn main:app --host 0.0.0.0 --port 8000 --log-level info
+else
+    # Replace shell with gunicorn master process
+    exec $GUNICORN_CMD
+fi
